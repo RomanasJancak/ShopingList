@@ -13,12 +13,12 @@ class UserController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(User::query()->latest()->get());
+        return response()->json(User::query()->latest()->get(['id', 'name', 'google_avatar']));
     }
 
     public function show(User $user): JsonResponse
     {
-        return response()->json($user);
+        return response()->json($user->only(['id', 'name', 'google_avatar']));
     }
 
     public function store(Request $request): JsonResponse
