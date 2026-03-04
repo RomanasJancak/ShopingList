@@ -7,6 +7,18 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## API Documentation
+
+- Swagger UI page: `/docs`
+- OpenAPI specification: `/openapi.json`
+
+This project includes OpenAPI documentation for User CRUD endpoints:
+
+- `GET /api/users`
+- `POST /api/users`
+- `PUT /api/users/{user}`
+- `DELETE /api/users/{user}`
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

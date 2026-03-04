@@ -8,6 +8,7 @@ Route::get('/', function () {
 });
 
 Route::view('/users', 'users')->name('users.index');
+Route::view('/docs', 'docs')->name('docs.index');
 
 Route::prefix('api')->group(function () {
     Route::get('/users', [UserController::class, 'index']);
