@@ -8,6 +8,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
-    <div id="app"></div>
+    <div
+        id="app"
+        data-is-authenticated="{{ auth()->check() ? '1' : '0' }}"
+        data-oauth-status="{{ session('oauth_status') }}"
+        data-oauth-error="{{ session('oauth_error') }}"
+    ></div>
 </body>
 </html>

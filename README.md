@@ -19,6 +19,25 @@ This project includes OpenAPI documentation for User CRUD endpoints:
 - `PUT /api/users/{user}`
 - `DELETE /api/users/{user}`
 
+## Google Authentication
+
+This project supports:
+
+- creating/signing in a user through Google (`/auth/google/redirect`)
+- linking a Google account to an existing signed-in user (`/auth/google/link`)
+
+Set the following variables in `.env`:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI` (default: `${APP_URL}/auth/google/callback`)
+
+Then run migrations to add Google linkage fields:
+
+```bash
+php artisan migrate
+```
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

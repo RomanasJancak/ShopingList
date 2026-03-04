@@ -1,6 +1,21 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 
+const props = defineProps({
+    isAuthenticated: {
+        type: Boolean,
+        default: false,
+    },
+    oauthStatus: {
+        type: String,
+        default: '',
+    },
+    oauthError: {
+        type: String,
+        default: '',
+    },
+});
+
 const users = ref([]);
 const loading = ref(false);
 const error = ref('');
@@ -106,7 +121,29 @@ onMounted(loadUsers);
 
 <template>
     <div class="mx-auto max-w-4xl p-6">
-        <h1 class="text-2xl font-bold mb-6">User CRUD</h1>
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <h1 class="text-2xl font-bold">User CRUD</h1>
+
+            <div class="flex gap-2">
+                <a
+                    href="/auth/google/redirect"
+                    class="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-900"
+                >
+                    Continue with Google
+                </a>
+
+                <a
+                    v-if="props.isAuthenticated"
+                    href="/auth/google/link"
+                    class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700"
+                >
+                    Link Google Account
+                </a>
+            </div>
+        </div>
+
+        <p v-if="props.oauthStatus" class="text-emerald-700 mb-4">{{ props.oauthStatus }}</p>
+        <p v-if="props.oauthError" class="text-red-700 mb-4">{{ props.oauthError }}</p>
 
         <div class="bg-white p-4 rounded-lg border border-gray-200 mb-6">
             <h2 class="text-lg font-semibold mb-4">{{ editingId ? 'Edit User' : 'Create User' }}</h2>
