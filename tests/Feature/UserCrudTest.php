@@ -11,6 +11,29 @@ class UserCrudTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_it_gets_authenticated_user_information_from_me_endpoint(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+
+        $response = $this->getJson('/api/me');
+
+        $response->assertOk()
+            ->assertJsonFragment([
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
+    }
+
+    public function test_guest_cannot_access_me_endpoint(): void
+    {
+        $response = $this->getJson('/api/me');
+
+        $response->assertUnauthorized();
+    }
+
     public function test_it_lists_users(): void
     {
         User::factory()->count(3)->create();

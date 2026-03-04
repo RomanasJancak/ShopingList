@@ -29,6 +29,7 @@ Route::prefix('auth/google')->group(function () {
 });
 
 Route::prefix('api')->group(function () {
+    Route::get('/me', [UserController::class, 'me'])->middleware('auth');
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{user}', [UserController::class, 'show'])->middleware('auth');
     Route::post('/users', [UserController::class, 'store']);

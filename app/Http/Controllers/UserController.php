@@ -11,6 +11,18 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    public function me(): JsonResponse
+    {
+        $user = auth()->user();
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'google_avatar' => $user->google_avatar,
+        ]);
+    }
+
     public function index(): JsonResponse
     {
         return response()->json(User::query()->latest()->get(['id', 'name', 'google_avatar']));
