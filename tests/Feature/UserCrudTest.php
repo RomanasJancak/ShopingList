@@ -29,9 +29,10 @@ class UserCrudTest extends TestCase
 
     public function test_guest_cannot_access_me_endpoint(): void
     {
-        $response = $this->getJson('/api/me');
+        $response = $this->get('/api/me');
 
-        $response->assertUnauthorized();
+        $response->assertUnauthorized()
+            ->assertHeader('Content-Type', 'application/json');
     }
 
     public function test_it_lists_users(): void

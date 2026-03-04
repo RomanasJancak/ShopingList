@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,13 +25,4 @@ Route::prefix('auth/google')->group(function () {
     Route::get('/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
     Route::get('/link', [GoogleAuthController::class, 'redirectForLink'])->name('auth.google.link');
     Route::get('/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
-});
-
-Route::prefix('api')->group(function () {
-    Route::get('/me', [UserController::class, 'me'])->middleware('auth');
-    Route::get('/users', [UserController::class, 'index']);
-    Route::get('/users/{user}', [UserController::class, 'show'])->middleware('auth');
-    Route::post('/users', [UserController::class, 'store']);
-    Route::put('/users/{user}', [UserController::class, 'update']);
-    Route::delete('/users/{user}', [UserController::class, 'destroy']);
 });
