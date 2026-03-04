@@ -20,6 +20,20 @@ class UserCrudTest extends TestCase
         $response->assertOk()->assertJsonCount(3);
     }
 
+    public function test_it_gets_single_user_information(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->getJson("/api/users/{$user->id}");
+
+        $response->assertOk()
+            ->assertJsonFragment([
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
+    }
+
     public function test_it_creates_a_user(): void
     {
         $response = $this->postJson('/api/users', [
