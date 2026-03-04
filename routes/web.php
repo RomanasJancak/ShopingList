@@ -1,14 +1,22 @@
 <?php
 
+use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('users.index');
 });
 
-Route::view('/users', 'users')->name('users.index');
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [SessionController::class, 'create'])->name('login');
+    Route::post('/login', [SessionController::class, 'store'])->name('login.store');
+});
+
+Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+Route::view('/users', 'users')->middleware('auth')->name('users.index');
 Route::view('/docs', 'docs')->name('docs.index');
 
 Route::prefix('auth/google')->group(function () {

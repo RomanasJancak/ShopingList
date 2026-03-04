@@ -23,7 +23,7 @@ class GoogleAuthController extends Controller
     public function redirectForLink(): RedirectResponse
     {
         if (! Auth::check()) {
-            return redirect('/users')->with('oauth_error', 'You must be logged in to link a Google account.');
+            return redirect()->route('login')->with('oauth_error', 'You must be logged in to link a Google account.');
         }
 
         session(['google_linking' => true]);
@@ -36,7 +36,7 @@ class GoogleAuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (Throwable) {
-            return redirect('/users')->with('oauth_error', 'Google authentication failed. Please try again.');
+            return redirect()->route('login')->with('oauth_error', 'Google authentication failed. Please try again.');
         }
 
         $googleId = (string) $googleUser->getId();
