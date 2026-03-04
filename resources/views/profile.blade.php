@@ -6,12 +6,12 @@
     <title>My Profile</title>
     @vite(['resources/css/app.css'])
 </head>
-<body class="min-h-screen bg-gray-50 p-6">
+<body class="min-h-screen bg-gray-50">
+    @include('partials.navbar')
+
+    <div class="p-6">
     <div class="mx-auto max-w-xl bg-white border border-gray-200 rounded-xl p-6">
-        <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-bold">My Profile</h1>
-            <a href="{{ route('users.index') }}" class="text-blue-600 hover:underline">Back to Users</a>
-        </div>
+        <h1 class="text-2xl font-bold mb-6">My Profile</h1>
 
         <div class="space-y-3">
             <div>
@@ -36,6 +36,7 @@
                 </div>
             @endif
         </div>
+    </div>
     </div>
 </body>
 </html>

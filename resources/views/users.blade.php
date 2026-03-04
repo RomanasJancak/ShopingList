@@ -8,6 +8,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
+    @include('partials.navbar')
+
     <div
         id="app"
         data-is-authenticated="{{ auth()->check() ? '1' : '0' }}"

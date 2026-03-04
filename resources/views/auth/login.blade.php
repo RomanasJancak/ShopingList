@@ -6,7 +6,10 @@
     <title>Login</title>
     @vite(['resources/css/app.css'])
 </head>
-<body class="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+<body class="min-h-screen bg-gray-50">
+    @include('partials.navbar')
+
+    <div class="p-6 min-h-[calc(100vh-65px)] flex items-center justify-center">
     <div class="w-full max-w-md bg-white border border-gray-200 rounded-xl p-6">
         <h1 class="text-2xl font-bold mb-1">Login</h1>
         <p class="text-gray-600 mb-6">Sign in to access the app.</p>
@@ -71,6 +74,7 @@
         >
             Continue with Google
         </a>
+    </div>
     </div>
 </body>
 </html>
