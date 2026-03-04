@@ -17,6 +17,9 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
 Route::view('/users', 'users')->middleware('auth')->name('users.index');
+Route::get('/profile', function () {
+    return view('profile', ['user' => auth()->user()]);
+})->middleware('auth')->name('profile.show');
 Route::view('/docs', 'docs')->name('docs.index');
 
 Route::prefix('auth/google')->group(function () {
@@ -27,7 +30,7 @@ Route::prefix('auth/google')->group(function () {
 
 Route::prefix('api')->group(function () {
     Route::get('/users', [UserController::class, 'index']);
-    Route::get('/users/{user}', [UserController::class, 'show']);
+    Route::get('/users/{user}', [UserController::class, 'show'])->middleware('auth');
     Route::post('/users', [UserController::class, 'store']);
     Route::put('/users/{user}', [UserController::class, 'update']);
     Route::delete('/users/{user}', [UserController::class, 'destroy']);

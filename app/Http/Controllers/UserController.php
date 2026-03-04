@@ -18,7 +18,9 @@ class UserController extends Controller
 
     public function show(User $user): JsonResponse
     {
-        return response()->json($user->only(['id', 'name', 'google_avatar']));
+        abort_unless(auth()->id() === $user->id, 403);
+
+        return response()->json($user->only(['id', 'name', 'email', 'google_avatar']));
     }
 
     public function store(Request $request): JsonResponse

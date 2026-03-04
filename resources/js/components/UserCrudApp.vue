@@ -126,6 +126,13 @@ onMounted(loadUsers);
 
             <div class="flex gap-2">
                 <a
+                    href="/profile"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                >
+                    My Profile
+                </a>
+
+                <a
                     href="/auth/google/redirect"
                     class="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-900"
                 >

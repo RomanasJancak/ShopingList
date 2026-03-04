@@ -24,6 +24,8 @@ class UserCrudTest extends TestCase
     {
         $user = User::factory()->create();
 
+        $this->actingAs($user);
+
         $response = $this->getJson("/api/users/{$user->id}");
 
         $response->assertOk()
@@ -32,6 +34,18 @@ class UserCrudTest extends TestCase
                 'name' => $user->name,
                 'email' => $user->email,
             ]);
+    }
+
+    public function test_user_cannot_view_another_user_information(): void
+    {
+        $authenticatedUser = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $this->actingAs($authenticatedUser);
+
+        $response = $this->getJson("/api/users/{$otherUser->id}");
+
+        $response->assertForbidden();
     }
 
     public function test_it_creates_a_user(): void
