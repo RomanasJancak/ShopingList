@@ -28,13 +28,24 @@ class FamilyController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+
+        $hasFamilyMembership = Family::query()
+            ->where('owner_user_id', $user->id)
+            ->orWhereHas('userRoles', fn ($query) => $query->where('user_id', $user->id))
+            ->exists();
+
+        if (! $user->hasRole('super-admin') && ! $hasFamilyMembership) {
+            abort(403, 'You are not allowed to create a family.');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
         ]);
 
         $family = Family::create([
             'name' => $validated['name'],
-            'owner_user_id' => $request->user()->id,
+            'owner_user_id' => $user->id,
         ]);
 
         $ownerRole = FamilyRole::create([
@@ -46,7 +57,7 @@ class FamilyController extends Controller
 
         FamilyUserRole::create([
             'family_id' => $family->id,
-            'user_id' => $request->user()->id,
+            'user_id' => $user->id,
             'family_role_id' => $ownerRole->id,
         ]);
 

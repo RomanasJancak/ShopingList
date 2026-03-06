@@ -23,7 +23,7 @@ class FamilyRoleHierarchyTest extends TestCase
         $owner = User::factory()->create();
         $member = User::factory()->create();
 
-        $owner->assignRole('admin');
+        $owner->assignRole('super-admin');
 
         $this->actingAs($owner);
 
@@ -69,7 +69,7 @@ class FamilyRoleHierarchyTest extends TestCase
         $manager = User::factory()->create();
         $target = User::factory()->create();
 
-        $owner->assignRole('admin');
+        $owner->assignRole('super-admin');
         $manager->assignRole('manager');
 
         $this->actingAs($owner);
@@ -100,6 +100,18 @@ class FamilyRoleHierarchyTest extends TestCase
         $this->postJson("/api/families/{$familyId}/assign-role", [
             'user_id' => $target->id,
             'family_role_id' => $highRoleId,
+        ])->assertForbidden();
+    }
+
+    public function test_logged_in_user_without_family_cannot_create_family(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('admin');
+
+        $this->actingAs($user);
+
+        $this->postJson('/api/families', [
+            'name' => 'Blocked Family',
         ])->assertForbidden();
     }
 }

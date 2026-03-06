@@ -10,6 +10,15 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        $superAdmin = User::firstOrCreate(
+            ['email' => 'superadmin@example.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make('password123'),
+            ]
+        );
+        $superAdmin->syncRoles(['super-admin']);
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
@@ -17,7 +26,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
             ]
         );
-        $admin->assignRole('admin');
+        $admin->syncRoles(['admin']);
 
         $manager = User::firstOrCreate(
             ['email' => 'manager@example.com'],
@@ -26,7 +35,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
             ]
         );
-        $manager->assignRole('manager');
+        $manager->syncRoles(['manager']);
 
         $member = User::firstOrCreate(
             ['email' => 'member@example.com'],
@@ -35,6 +44,11 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
             ]
         );
-        $member->assignRole('member');
+        $member->syncRoles(['member']);
+
+        User::query()
+            ->where('id', '!=', $superAdmin->id)
+            ->get()
+            ->each(fn (User $user) => $user->removeRole('super-admin'));
     }
 }

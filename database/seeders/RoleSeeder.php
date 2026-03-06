@@ -10,6 +10,8 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
+        Role::findOrCreate('super-admin', 'web');
+
         $permissionsByRole = [
             'member' => [
                 'profile.view',
