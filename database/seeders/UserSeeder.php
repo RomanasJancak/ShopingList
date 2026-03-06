@@ -11,10 +11,10 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@example.com'],
+            ['email' => 'sadmin@localhost.lt'],
             [
                 'name' => 'Super Admin',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('Z9@pF3!uVx7m#LrT2sQe4WjY8n%bDcH6kR^aP1gUo5tJ&iC0zX*Nh$EyMlOqSd'),
             ]
         );
         $superAdmin->syncRoles(['super-admin']);
