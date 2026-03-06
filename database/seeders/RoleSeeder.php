@@ -10,7 +10,7 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        Role::findOrCreate('super-admin', 'web');
+        $superAdminRole = Role::findOrCreate('super-admin', 'web');
 
         $permissionsByRole = [
             'member' => [
@@ -37,5 +37,7 @@ class RoleSeeder extends Seeder
                 $role->givePermissionTo($permission);
             }
         }
+
+        $superAdminRole->syncPermissions(Permission::query()->pluck('name')->all());
     }
 }
