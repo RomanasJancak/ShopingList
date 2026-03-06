@@ -25,7 +25,7 @@ class UserController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json(User::query()->latest()->get(['id', 'name', 'google_avatar']));
+        return response()->json(User::query()->latest()->get(['id', 'name', 'email', 'google_avatar']));
     }
 
     public function show(User $user): JsonResponse

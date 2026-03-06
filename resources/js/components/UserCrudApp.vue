@@ -46,7 +46,7 @@ const loadUsers = async () => {
     try {
         const response = await window.axios.get('/api/users');
         users.value = response.data;
-    } catch (loadError) {
+    } catch {
         error.value = 'Failed to load users.';
     } finally {
         loading.value = false;
@@ -125,27 +125,10 @@ onMounted(loadUsers);
             <h1 class="text-2xl font-bold">User CRUD</h1>
 
             <div class="flex gap-2">
-                <a
-                    href="/profile"
-                    class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-                >
-                    My Profile
-                </a>
-
-                <a
-                    href="/auth/google/redirect"
-                    class="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-900"
-                >
-                    Continue with Google
-                </a>
-
-                <a
-                    v-if="props.isAuthenticated"
-                    href="/auth/google/link"
-                    class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700"
-                >
-                    Link Google Account
-                </a>
+                <a href="/profile" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">My Profile</a>
+                <a href="/families" class="bg-violet-600 text-white px-4 py-2 rounded hover:bg-violet-700">Families</a>
+                <a href="/auth/google/redirect" class="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-900">Continue with Google</a>
+                <a v-if="props.isAuthenticated" href="/auth/google/link" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Link Google Account</a>
             </div>
         </div>
 
@@ -158,55 +141,25 @@ onMounted(loadUsers);
             <form class="grid gap-4 md:grid-cols-3" @submit.prevent="submitForm">
                 <div>
                     <label class="block text-sm font-medium mb-1">Name</label>
-                    <input
-                        v-model="form.name"
-                        type="text"
-                        class="w-full border border-gray-300 rounded px-3 py-2"
-                        placeholder="John Doe"
-                    >
+                    <input v-model="form.name" type="text" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="John Doe">
                     <p v-if="fieldErrors.name" class="text-red-600 text-sm mt-1">{{ fieldErrors.name[0] }}</p>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Email</label>
-                    <input
-                        v-model="form.email"
-                        type="email"
-                        class="w-full border border-gray-300 rounded px-3 py-2"
-                        placeholder="john@example.com"
-                    >
+                    <input v-model="form.email" type="email" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="john@example.com">
                     <p v-if="fieldErrors.email" class="text-red-600 text-sm mt-1">{{ fieldErrors.email[0] }}</p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-1">
-                        Password {{ editingId ? '(leave empty to keep current)' : '' }}
-                    </label>
-                    <input
-                        v-model="form.password"
-                        type="password"
-                        class="w-full border border-gray-300 rounded px-3 py-2"
-                        placeholder="********"
-                    >
+                    <label class="block text-sm font-medium mb-1">Password {{ editingId ? '(leave empty to keep current)' : '' }}</label>
+                    <input v-model="form.password" type="password" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="********">
                     <p v-if="fieldErrors.password" class="text-red-600 text-sm mt-1">{{ fieldErrors.password[0] }}</p>
                 </div>
 
                 <div class="md:col-span-3 flex gap-2">
-                    <button
-                        type="submit"
-                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                    >
-                        {{ editingId ? 'Update User' : 'Create User' }}
-                    </button>
-
-                    <button
-                        v-if="editingId"
-                        type="button"
-                        class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
-                        @click="clearForm"
-                    >
-                        Cancel
-                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ editingId ? 'Update User' : 'Create User' }}</button>
+                    <button v-if="editingId" type="button" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300" @click="clearForm">Cancel</button>
                 </div>
             </form>
         </div>
@@ -230,18 +183,8 @@ onMounted(loadUsers);
                         <td class="p-3">{{ user.name }}</td>
                         <td class="p-3">{{ user.email }}</td>
                         <td class="p-3 flex gap-2">
-                            <button
-                                class="bg-amber-500 text-white px-3 py-1 rounded hover:bg-amber-600"
-                                @click="fillFormForEdit(user)"
-                            >
-                                Edit
-                            </button>
-                            <button
-                                class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                                @click="deleteUser(user.id)"
-                            >
-                                Delete
-                            </button>
+                            <button class="bg-amber-500 text-white px-3 py-1 rounded hover:bg-amber-600" @click="fillFormForEdit(user)">Edit</button>
+                            <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" @click="deleteUser(user.id)">Delete</button>
                         </td>
                     </tr>
                     <tr v-if="users.length === 0">

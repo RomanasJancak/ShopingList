@@ -5,6 +5,7 @@
         <div class="flex items-center gap-4 text-sm">
             @auth
                 <a href="{{ route('users.index') }}" class="text-gray-700 hover:text-gray-900">Users</a>
+                <a href="{{ route('families.index') }}" class="text-gray-700 hover:text-gray-900">Families</a>
                 <a href="{{ route('profile.show') }}" class="text-gray-700 hover:text-gray-900">My Profile</a>
                 <a href="{{ route('docs.index') }}" class="text-gray-700 hover:text-gray-900">Docs</a>
 
