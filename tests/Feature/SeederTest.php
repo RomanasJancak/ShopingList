@@ -20,7 +20,7 @@ class SeederTest extends TestCase
         $this->assertDatabaseHas('roles', ['name' => 'manager']);
         $this->assertDatabaseHas('roles', ['name' => 'member']);
 
-        $superAdmin = User::query()->where('email', 'superadmin@example.com')->first();
+        $superAdmin = User::query()->where('email', 'sadmin@localhost.lt')->first();
         $admin = User::query()->where('email', 'admin@example.com')->first();
         $manager = User::query()->where('email', 'manager@example.com')->first();
         $member = User::query()->where('email', 'member@example.com')->first();

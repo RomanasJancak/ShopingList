@@ -127,6 +127,7 @@ onMounted(loadUsers);
             <div class="flex gap-2">
                 <a href="/profile" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">My Profile</a>
                 <a href="/families" class="bg-violet-600 text-white px-4 py-2 rounded hover:bg-violet-700">Families</a>
+                <a href="/shopping-lists" class="bg-cyan-700 text-white px-4 py-2 rounded hover:bg-cyan-800">Shopping Lists</a>
                 <a href="/auth/google/redirect" class="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-900">Continue with Google</a>
                 <a v-if="props.isAuthenticated" href="/auth/google/link" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Link Google Account</a>
             </div>

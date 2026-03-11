@@ -17,6 +17,7 @@ Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth'
 
 Route::view('/users', 'users')->middleware('auth')->name('users.index');
 Route::view('/families', 'families')->middleware('auth')->name('families.index');
+Route::view('/shopping-lists', 'shopping-lists')->middleware('auth')->name('shopping-lists.index');
 Route::get('/profile', function () {
     return view('profile', ['user' => auth()->user()]);
 })->middleware('auth')->name('profile.show');

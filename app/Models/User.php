@@ -65,4 +65,19 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Family::class, 'family_user_roles');
     }
+
+    public function ownedShoppingLists(): HasMany
+    {
+        return $this->hasMany(ShoppingList::class, 'owner_user_id');
+    }
+
+    public function shoppingListShares(): HasMany
+    {
+        return $this->hasMany(ShoppingListUser::class);
+    }
+
+    public function familyShoppingListShares(): HasMany
+    {
+        return $this->hasMany(ShoppingListFamilyUser::class);
+    }
 }

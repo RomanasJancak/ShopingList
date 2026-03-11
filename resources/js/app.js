@@ -2,6 +2,7 @@ import './bootstrap';
 import { createApp } from 'vue';
 import UserCrudApp from './components/UserCrudApp.vue';
 import FamilyManagementApp from './components/FamilyManagementApp.vue';
+import ShoppingListManagementApp from './components/ShoppingListManagementApp.vue';
 
 const appElement = document.getElementById('app');
 
@@ -10,6 +11,8 @@ if (appElement) {
 
 	if (page === 'families') {
 		createApp(FamilyManagementApp).mount(appElement);
+	} else if (page === 'shopping-lists') {
+		createApp(ShoppingListManagementApp).mount(appElement);
 	} else {
 		createApp(UserCrudApp, {
 			isAuthenticated: isAuthenticated === '1',

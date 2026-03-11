@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Family extends Model
+class ShoppingList extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'name',
+        'description',
         'owner_user_id',
     ];
 
@@ -21,22 +22,17 @@ class Family extends Model
         return $this->belongsTo(User::class, 'owner_user_id');
     }
 
-    public function roles(): HasMany
+    public function userShares(): HasMany
     {
-        return $this->hasMany(FamilyRole::class);
+        return $this->hasMany(ShoppingListUser::class);
     }
 
-    public function userRoles(): HasMany
-    {
-        return $this->hasMany(FamilyUserRole::class);
-    }
-
-    public function shoppingListShares(): HasMany
+    public function familyShares(): HasMany
     {
         return $this->hasMany(ShoppingListFamily::class);
     }
 
-    public function shoppingListMemberShares(): HasMany
+    public function familyMemberShares(): HasMany
     {
         return $this->hasMany(ShoppingListFamilyUser::class);
     }
