@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccessControlController;
 use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\ShoppingListController;
 use App\Http\Controllers\UserController;
@@ -14,6 +15,11 @@ Route::middleware('web')->group(function () {
 	Route::delete('/users/{user}', [UserController::class, 'destroy']);
 
 	Route::middleware('auth')->group(function () {
+		Route::get('/access-control/permissions', [AccessControlController::class, 'permissions'])
+			->middleware('permission:permissions.view');
+		Route::get('/access-control/roles', [AccessControlController::class, 'roles'])
+			->middleware('permission:roles.view');
+
 		Route::get('/shopping-lists', [ShoppingListController::class, 'index']);
 		Route::post('/shopping-lists', [ShoppingListController::class, 'store']);
 		Route::get('/shopping-lists/{shoppingList}', [ShoppingListController::class, 'show']);

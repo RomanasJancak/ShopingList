@@ -20,11 +20,15 @@ class RoleSeeder extends Seeder
                 'profile.view',
                 'family.manage',
                 'roles.manage',
+                'roles.view',
+                'permissions.view',
             ],
             'admin' => [
                 'profile.view',
                 'family.manage',
                 'roles.manage',
+                'roles.view',
+                'permissions.view',
                 'users.manage',
             ],
         ];
