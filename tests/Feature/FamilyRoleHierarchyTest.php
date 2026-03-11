@@ -114,4 +114,92 @@ class FamilyRoleHierarchyTest extends TestCase
             'name' => 'Blocked Family',
         ])->assertForbidden();
     }
+
+    public function test_family_management_endpoints_support_full_crud_and_member_changes(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+
+        $owner->assignRole('super-admin');
+
+        $this->actingAs($owner);
+
+        $familyId = $this->postJson('/api/families', [
+            'name' => 'Initial Family',
+        ])->assertCreated()->json('id');
+
+        $viewerRoleId = $this->postJson("/api/families/{$familyId}/roles", [
+            'name' => 'viewer',
+            'level' => 5,
+            'permissions' => ['list.view'],
+        ])->assertCreated()->json('id');
+
+        $editorRoleId = $this->postJson("/api/families/{$familyId}/roles", [
+            'name' => 'editor',
+            'level' => 10,
+            'permissions' => ['list.edit'],
+        ])->assertCreated()->json('id');
+
+        $this->postJson("/api/families/{$familyId}/members", [
+            'user_id' => $member->id,
+            'family_role_id' => $viewerRoleId,
+        ])->assertCreated();
+
+        $this->getJson("/api/families/{$familyId}/members")
+            ->assertOk()
+            ->assertJsonFragment(['user_id' => $member->id]);
+
+        $this->putJson("/api/families/{$familyId}/members/{$member->id}", [
+            'family_role_id' => $editorRoleId,
+        ])->assertOk()
+            ->assertJsonFragment(['family_role_id' => $editorRoleId]);
+
+        $this->putJson("/api/families/{$familyId}/roles/{$viewerRoleId}", [
+            'name' => 'viewer-renamed',
+            'level' => 6,
+            'permissions' => ['list.view', 'list.comment'],
+        ])->assertOk()
+            ->assertJsonFragment(['name' => 'viewer-renamed'])
+            ->assertJsonFragment(['level' => 6]);
+
+        $this->putJson("/api/families/{$familyId}", [
+            'name' => 'Updated Family',
+        ])->assertOk()
+            ->assertJsonFragment(['name' => 'Updated Family']);
+
+        $this->deleteJson("/api/families/{$familyId}/members/{$member->id}")
+            ->assertOk();
+
+        $this->deleteJson("/api/families/{$familyId}/roles/{$viewerRoleId}")
+            ->assertOk();
+
+        $this->deleteJson("/api/families/{$familyId}")
+            ->assertOk();
+    }
+
+    public function test_family_owner_role_cannot_be_changed_or_removed(): void
+    {
+        $owner = User::factory()->create();
+
+        $owner->assignRole('super-admin');
+
+        $this->actingAs($owner);
+
+        $familyId = $this->postJson('/api/families', [
+            'name' => 'Owner Family',
+        ])->assertCreated()->json('id');
+
+        $roleId = $this->postJson("/api/families/{$familyId}/roles", [
+            'name' => 'role-a',
+            'level' => 5,
+            'permissions' => ['list.view'],
+        ])->assertCreated()->json('id');
+
+        $this->putJson("/api/families/{$familyId}/members/{$owner->id}", [
+            'family_role_id' => $roleId,
+        ])->assertStatus(422);
+
+        $this->deleteJson("/api/families/{$familyId}/members/{$owner->id}")
+            ->assertStatus(422);
+    }
 }
