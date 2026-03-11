@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Models\Family;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -19,7 +20,19 @@ Route::view('/users', 'users')->middleware('auth')->name('users.index');
 Route::view('/families', 'families')->middleware('auth')->name('families.index');
 Route::view('/shopping-lists', 'shopping-lists')->middleware('auth')->name('shopping-lists.index');
 Route::get('/profile', function () {
-    return view('profile', ['user' => auth()->user()]);
+    $user = auth()->user();
+
+    $families = Family::query()
+        ->where('owner_user_id', $user->id)
+        ->orWhereHas('userRoles', fn ($query) => $query->where('user_id', $user->id))
+        ->orderBy('name')
+        ->distinct()
+        ->get(['id', 'name', 'owner_user_id']);
+
+    return view('profile', [
+        'user' => $user,
+        'families' => $families,
+    ]);
 })->middleware('auth')->name('profile.show');
 Route::view('/docs', 'docs')->name('docs.index');
 

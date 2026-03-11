@@ -35,6 +35,27 @@
                     <img src="{{ $user->google_avatar }}" alt="Google Avatar" class="w-16 h-16 rounded-full border border-gray-200">
                 </div>
             @endif
+
+            <div>
+                <p class="text-sm text-gray-500 mb-2">Families</p>
+
+                @if ($families->isEmpty())
+                    <p class="text-sm text-gray-600">You do not belong to any families yet.</p>
+                @else
+                    <ul class="space-y-1">
+                        @foreach ($families as $family)
+                            <li>
+                                <a
+                                    href="{{ route('families.index') }}?family={{ $family->id }}"
+                                    class="text-blue-700 hover:text-blue-900 hover:underline"
+                                >
+                                    {{ $family->name }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
         </div>
     </div>
     </div>

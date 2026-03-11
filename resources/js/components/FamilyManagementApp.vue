@@ -38,6 +38,7 @@ const roleEditForm = reactive({
 });
 
 const memberRoleSelections = reactive({});
+const initialFamilyIdFromQuery = new URLSearchParams(window.location.search).get('family') || '';
 
 const loadUsers = async () => {
     try {
@@ -52,6 +53,16 @@ const loadFamilies = async () => {
     try {
         const response = await window.axios.get('/api/families');
         families.value = response.data;
+
+        if (!selectedFamilyId.value && initialFamilyIdFromQuery) {
+            const existsInList = families.value.some((family) => String(family.id) === String(initialFamilyIdFromQuery));
+
+            if (existsInList) {
+                selectedFamilyId.value = String(initialFamilyIdFromQuery);
+                await loadSelectedFamilyData();
+                return;
+            }
+        }
 
         if (!selectedFamilyId.value && families.value.length > 0) {
             selectedFamilyId.value = String(families.value[0].id);
