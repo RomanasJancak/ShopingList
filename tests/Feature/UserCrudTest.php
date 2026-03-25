@@ -60,6 +60,16 @@ class UserCrudTest extends TestCase
             ]);
     }
 
+    public function test_guest_cannot_view_single_user_information(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->getJson("/api/users/{$user->id}");
+
+        $response->assertUnauthorized()
+            ->assertHeader('Content-Type', 'application/json');
+    }
+
     public function test_user_cannot_view_another_user_information(): void
     {
         $authenticatedUser = User::factory()->create();
@@ -98,6 +108,22 @@ class UserCrudTest extends TestCase
 
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['name', 'email', 'password']);
+    }
+
+    public function test_it_validates_unique_email_on_user_creation(): void
+    {
+        User::factory()->create([
+            'email' => 'existing@example.com',
+        ]);
+
+        $response = $this->postJson('/api/users', [
+            'name' => 'Duplicate User',
+            'email' => 'existing@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
     }
 
     public function test_it_updates_a_user_without_changing_password_when_password_is_empty(): void
@@ -143,6 +169,46 @@ class UserCrudTest extends TestCase
         $user->refresh();
 
         $this->assertTrue(Hash::check('newPassword123', $user->password));
+    }
+
+    public function test_it_validates_unique_email_on_user_update(): void
+    {
+        $firstUser = User::factory()->create([
+            'email' => 'first@example.com',
+        ]);
+
+        $secondUser = User::factory()->create([
+            'email' => 'second@example.com',
+        ]);
+
+        $response = $this->putJson("/api/users/{$secondUser->id}", [
+            'name' => 'Second User',
+            'email' => 'first@example.com',
+            'password' => null,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+
+        $firstUser->refresh();
+        $secondUser->refresh();
+
+        $this->assertSame('first@example.com', $firstUser->email);
+        $this->assertSame('second@example.com', $secondUser->email);
+    }
+
+    public function test_it_validates_minimum_password_length_on_user_update(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->putJson("/api/users/{$user->id}", [
+            'name' => 'Short Password',
+            'email' => 'short-password@example.com',
+            'password' => 'short',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['password']);
     }
 
     public function test_it_deletes_a_user(): void
