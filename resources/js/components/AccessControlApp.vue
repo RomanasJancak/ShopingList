@@ -1,40 +1,164 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 
 const permissions = ref([]);
 const roles = ref([]);
 const loading = ref(false);
 const error = ref('');
 const canViewPermissions = ref(false);
+const canManagePermissions = ref(false);
 const canViewRoles = ref(false);
+const canManageRoles = ref(false);
+
+const permissionForm = reactive({
+    name: '',
+    guardName: 'web',
+});
+
+const editingPermissionId = ref(null);
+
+const roleForm = reactive({
+    name: '',
+    guardName: 'web',
+    permissionIds: [],
+});
+
+const editingRoleId = ref(null);
+
+const loadCapabilities = async () => {
+    const response = await window.axios.get('/api/access-control/capabilities');
+
+    canViewPermissions.value = response.data.can_view_permissions;
+    canManagePermissions.value = response.data.can_manage_permissions;
+    canViewRoles.value = response.data.can_view_roles;
+    canManageRoles.value = response.data.can_manage_roles;
+};
 
 const loadPermissions = async () => {
-    try {
-        const response = await window.axios.get('/api/access-control/permissions');
-        permissions.value = response.data;
-        canViewPermissions.value = true;
-    } catch (requestError) {
-        if (requestError.response?.status === 403) {
-            canViewPermissions.value = false;
-            return;
-        }
-
-        throw requestError;
+    if (!canViewPermissions.value) {
+        permissions.value = [];
+        return;
     }
+
+    const response = await window.axios.get('/api/access-control/permissions');
+    permissions.value = response.data;
 };
 
 const loadRoles = async () => {
+    if (!canViewRoles.value) {
+        roles.value = [];
+        return;
+    }
+
+    const response = await window.axios.get('/api/access-control/roles');
+    roles.value = response.data;
+};
+
+const loadAll = async () => {
+    await Promise.all([
+        loadPermissions(),
+        loadRoles(),
+    ]);
+};
+
+const resetPermissionForm = () => {
+    permissionForm.name = '';
+    permissionForm.guardName = 'web';
+    editingPermissionId.value = null;
+};
+
+const startEditPermission = (permission) => {
+    permissionForm.name = permission.name;
+    permissionForm.guardName = permission.guard_name;
+    editingPermissionId.value = permission.id;
+};
+
+const submitPermission = async () => {
+    error.value = '';
+
     try {
-        const response = await window.axios.get('/api/access-control/roles');
-        roles.value = response.data;
-        canViewRoles.value = true;
-    } catch (requestError) {
-        if (requestError.response?.status === 403) {
-            canViewRoles.value = false;
-            return;
+        const payload = {
+            name: permissionForm.name,
+            guard_name: permissionForm.guardName || 'web',
+        };
+
+        if (editingPermissionId.value) {
+            await window.axios.put(`/api/access-control/permissions/${editingPermissionId.value}`, payload);
+        } else {
+            await window.axios.post('/api/access-control/permissions', payload);
         }
 
-        throw requestError;
+        resetPermissionForm();
+        await loadAll();
+    } catch (requestError) {
+        error.value = requestError.response?.data?.message || 'Unable to save permission.';
+    }
+};
+
+const deletePermission = async (permissionId) => {
+    if (!window.confirm('Delete this permission?')) {
+        return;
+    }
+
+    error.value = '';
+
+    try {
+        await window.axios.delete(`/api/access-control/permissions/${permissionId}`);
+        await loadAll();
+    } catch (requestError) {
+        error.value = requestError.response?.data?.message || 'Unable to delete permission.';
+    }
+};
+
+const resetRoleForm = () => {
+    roleForm.name = '';
+    roleForm.guardName = 'web';
+    roleForm.permissionIds = [];
+    editingRoleId.value = null;
+};
+
+const startEditRole = (role) => {
+    roleForm.name = role.name;
+    roleForm.guardName = role.guard_name;
+    roleForm.permissionIds = (role.permissions || []).map((permission) => permission.id);
+    editingRoleId.value = role.id;
+};
+
+const submitRole = async () => {
+    error.value = '';
+
+    try {
+        const payload = {
+            name: roleForm.name,
+            guard_name: roleForm.guardName || 'web',
+            permission_ids: roleForm.permissionIds,
+        };
+
+        if (editingRoleId.value) {
+            await window.axios.put(`/api/access-control/roles/${editingRoleId.value}`, payload);
+        } else {
+            await window.axios.post('/api/access-control/roles', payload);
+        }
+
+        resetRoleForm();
+        await loadAll();
+    } catch (requestError) {
+        error.value = requestError.response?.data?.message || 'Unable to save role.';
+    }
+};
+
+const deleteRole = async (roleId) => {
+    if (!window.confirm('Delete this role?')) {
+        return;
+    }
+
+    error.value = '';
+
+    try {
+        await window.axios.delete(`/api/access-control/roles/${roleId}`);
+        await loadAll();
+    } catch (requestError) {
+        error.value = requestError.response?.data?.message || 'Unable to delete role.';
     }
 };
 
@@ -43,10 +167,8 @@ onMounted(async () => {
     error.value = '';
 
     try {
-        await Promise.all([
-            loadPermissions(),
-            loadRoles(),
-        ]);
+        await loadCapabilities();
+        await loadAll();
     } catch {
         error.value = 'Failed to load access control data.';
     } finally {
@@ -74,7 +196,20 @@ onMounted(async () => {
                     No permissions found.
                 </div>
 
-                <ul v-else class="space-y-2 text-sm">
+                <form v-if="canManagePermissions" class="grid gap-2 mb-4" @submit.prevent="submitPermission">
+                    <input v-model="permissionForm.name" type="text" class="border border-gray-300 rounded px-3 py-2" placeholder="Permission name">
+                    <input v-model="permissionForm.guardName" type="text" class="border border-gray-300 rounded px-3 py-2" placeholder="Guard (web)">
+                    <div class="flex gap-2">
+                        <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                            {{ editingPermissionId ? 'Update Permission' : 'Create Permission' }}
+                        </button>
+                        <button v-if="editingPermissionId" type="button" class="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300" @click="resetPermissionForm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+
+                <ul v-if="canViewPermissions && permissions.length > 0" class="space-y-2 text-sm">
                     <li v-for="permission in permissions" :key="permission.id" class="border border-gray-200 rounded p-2">
                         <p class="font-medium">{{ permission.name }}</p>
                         <p class="text-gray-600">Guard: {{ permission.guard_name }}</p>
@@ -82,6 +217,14 @@ onMounted(async () => {
                         <p class="text-gray-600">
                             Roles: {{ (permission.roles || []).map((role) => role.name).join(', ') || 'none' }}
                         </p>
+                        <div v-if="canManagePermissions" class="mt-2 flex gap-2">
+                            <button type="button" class="bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700" @click="startEditPermission(permission)">
+                                Edit
+                            </button>
+                            <button type="button" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" @click="deletePermission(permission.id)">
+                                Delete
+                            </button>
+                        </div>
                     </li>
                 </ul>
             </div>
@@ -97,7 +240,26 @@ onMounted(async () => {
                     No roles found.
                 </div>
 
-                <ul v-else class="space-y-2 text-sm">
+                <form v-if="canManageRoles" class="grid gap-2 mb-4" @submit.prevent="submitRole">
+                    <input v-model="roleForm.name" type="text" class="border border-gray-300 rounded px-3 py-2" placeholder="Role name">
+                    <input v-model="roleForm.guardName" type="text" class="border border-gray-300 rounded px-3 py-2" placeholder="Guard (web)">
+                    <label class="text-sm text-gray-700">Role permissions</label>
+                    <select v-model="roleForm.permissionIds" multiple class="border border-gray-300 rounded px-3 py-2 min-h-32">
+                        <option v-for="permission in permissions" :key="`permission-opt-${permission.id}`" :value="permission.id">
+                            {{ permission.name }}
+                        </option>
+                    </select>
+                    <div class="flex gap-2">
+                        <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                            {{ editingRoleId ? 'Update Role' : 'Create Role' }}
+                        </button>
+                        <button v-if="editingRoleId" type="button" class="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300" @click="resetRoleForm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+
+                <ul v-if="canViewRoles && roles.length > 0" class="space-y-2 text-sm">
                     <li v-for="role in roles" :key="role.id" class="border border-gray-200 rounded p-2">
                         <p class="font-medium">{{ role.name }}</p>
                         <p class="text-gray-600">Guard: {{ role.guard_name }}</p>
@@ -106,6 +268,14 @@ onMounted(async () => {
                         <p class="text-gray-600">
                             Permissions: {{ (role.permissions || []).map((permission) => permission.name).join(', ') || 'none' }}
                         </p>
+                        <div v-if="canManageRoles" class="mt-2 flex gap-2">
+                            <button type="button" class="bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700" @click="startEditRole(role)">
+                                Edit
+                            </button>
+                            <button type="button" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" @click="deleteRole(role.id)">
+                                Delete
+                            </button>
+                        </div>
                     </li>
                 </ul>
             </div>

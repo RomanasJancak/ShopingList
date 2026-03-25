@@ -29,6 +29,7 @@ class RoleSeeder extends Seeder
                 'roles.manage',
                 'roles.view',
                 'permissions.view',
+                'permissions.manage',
                 'users.manage',
             ],
         ];

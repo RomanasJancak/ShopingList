@@ -15,10 +15,25 @@ Route::middleware('web')->group(function () {
 	Route::delete('/users/{user}', [UserController::class, 'destroy']);
 
 	Route::middleware('auth')->group(function () {
+		Route::get('/access-control/capabilities', [AccessControlController::class, 'capabilities']);
+
 		Route::get('/access-control/permissions', [AccessControlController::class, 'permissions'])
 			->middleware('permission:permissions.view');
+		Route::post('/access-control/permissions', [AccessControlController::class, 'storePermission'])
+			->middleware('permission:permissions.manage');
+		Route::put('/access-control/permissions/{permission}', [AccessControlController::class, 'updatePermission'])
+			->middleware('permission:permissions.manage');
+		Route::delete('/access-control/permissions/{permission}', [AccessControlController::class, 'destroyPermission'])
+			->middleware('permission:permissions.manage');
+
 		Route::get('/access-control/roles', [AccessControlController::class, 'roles'])
 			->middleware('permission:roles.view');
+		Route::post('/access-control/roles', [AccessControlController::class, 'storeRole'])
+			->middleware('permission:roles.manage');
+		Route::put('/access-control/roles/{role}', [AccessControlController::class, 'updateRole'])
+			->middleware('permission:roles.manage');
+		Route::delete('/access-control/roles/{role}', [AccessControlController::class, 'destroyRole'])
+			->middleware('permission:roles.manage');
 
 		Route::get('/shopping-lists', [ShoppingListController::class, 'index']);
 		Route::post('/shopping-lists', [ShoppingListController::class, 'store']);
