@@ -13,10 +13,11 @@ class ProductImageUploadTest extends TestCase
     use RefreshDatabase;
 
     private const SAMPLE_PNG_PATH = __DIR__.'/../Fixtures/product-sample.png';
+    private const PRODUCT_PICTURES_DISK = 'product_pictures';
 
     public function test_product_picture_is_uploaded_on_create(): void
     {
-        Storage::fake('public');
+        Storage::fake(self::PRODUCT_PICTURES_DISK);
         $user = User::factory()->create();
 
         $this->actingAs($user);
@@ -33,15 +34,15 @@ class ProductImageUploadTest extends TestCase
         $path = $response->json('picture');
         $this->assertNotNull($path);
 
-        Storage::disk('public')->assertExists($path);
+        Storage::disk(self::PRODUCT_PICTURES_DISK)->assertExists(basename($path));
 
-        $imageData = Storage::disk('public')->get($path);
+        $imageData = Storage::disk(self::PRODUCT_PICTURES_DISK)->get(basename($path));
         $this->assertNotFalse(getimagesizefromstring($imageData));
     }
 
     public function test_product_picture_is_replaced_on_update(): void
     {
-        Storage::fake('public');
+        Storage::fake(self::PRODUCT_PICTURES_DISK);
         $user = User::factory()->create();
 
         $this->actingAs($user);
@@ -69,10 +70,10 @@ class ProductImageUploadTest extends TestCase
         $newPath = $updateResponse->json('picture');
         $this->assertNotSame($oldPath, $newPath);
 
-        Storage::disk('public')->assertMissing($oldPath);
-        Storage::disk('public')->assertExists($newPath);
+        Storage::disk(self::PRODUCT_PICTURES_DISK)->assertMissing(basename($oldPath));
+        Storage::disk(self::PRODUCT_PICTURES_DISK)->assertExists(basename($newPath));
 
-        $imageData = Storage::disk('public')->get($newPath);
+        $imageData = Storage::disk(self::PRODUCT_PICTURES_DISK)->get(basename($newPath));
         $this->assertNotFalse(getimagesizefromstring($imageData));
     }
 }

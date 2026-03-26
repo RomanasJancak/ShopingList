@@ -14,6 +14,7 @@ use Illuminate\Validation\ValidationException;
 class ProductController extends Controller
 {
     private const MAX_PICTURE_KB = 40096;
+    private const PRODUCT_PICTURES_DISK = 'product_pictures';
 
     public function index(): JsonResponse
     {
@@ -85,7 +86,7 @@ class ProductController extends Controller
             'id' => $product->id,
             'name' => $product->name,
             'picture' => $product->picture,
-            'picture_url' => $product->picture ? asset('storage/'.$product->picture) : null,
+            'picture_url' => $this->resolvePictureUrl($product->picture),
             'description' => $product->description,
             'quantity_type' => $product->quantity_type,
         ];
@@ -96,7 +97,7 @@ class ProductController extends Controller
         $extension = strtolower($picture->getClientOriginalExtension() ?: $picture->extension() ?: 'jpg');
         $filename = Str::uuid().'.'.$extension;
 
-        Storage::disk('public')->putFileAs('products', $picture, $filename);
+        Storage::disk(self::PRODUCT_PICTURES_DISK)->putFileAs('', $picture, $filename);
 
         return 'products/'.$filename;
     }
@@ -107,7 +108,25 @@ class ProductController extends Controller
             return;
         }
 
+        if (str_starts_with($path, 'products/')) {
+            Storage::disk(self::PRODUCT_PICTURES_DISK)->delete(basename($path));
+        }
+
+        // Keep cleanup for legacy files previously written under storage/app/public.
         Storage::disk('public')->delete($path);
+    }
+
+    private function resolvePictureUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'products/') && Storage::disk(self::PRODUCT_PICTURES_DISK)->exists(basename($path))) {
+            return asset($path);
+        }
+
+        return asset('storage/'.$path);
     }
 
     private function productValidationRules(): array
