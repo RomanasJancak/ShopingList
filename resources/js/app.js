@@ -3,6 +3,7 @@ import { createApp } from 'vue';
 import UserCrudApp from './components/UserCrudApp.vue';
 import FamilyManagementApp from './components/FamilyManagementApp.vue';
 import ShoppingListManagementApp from './components/ShoppingListManagementApp.vue';
+import ShoppingListViewApp from './components/ShoppingListViewApp.vue';
 import AccessControlApp from './components/AccessControlApp.vue';
 
 const appElement = document.getElementById('app');
@@ -14,6 +15,8 @@ if (appElement) {
 		createApp(FamilyManagementApp).mount(appElement);
 	} else if (page === 'shopping-lists') {
 		createApp(ShoppingListManagementApp).mount(appElement);
+	} else if (page === 'shopping-list-view') {
+		createApp(ShoppingListViewApp, { listId: appElement.dataset.listId }).mount(appElement);
 	} else if (page === 'access-control') {
 		createApp(AccessControlApp).mount(appElement);
 	} else {

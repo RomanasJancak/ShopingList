@@ -16,11 +16,11 @@ class ExampleTest extends TestCase
     /**
      * A basic test example.
      */
-    public function test_the_application_redirects_to_users_page(): void
+    public function test_the_application_redirects_to_shopping_lists_page(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect(route('users.index'));
+        $response->assertRedirect(route('shopping-lists.index'));
     }
 
     public function test_authenticated_user_can_logout(): void

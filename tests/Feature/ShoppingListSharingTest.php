@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Family;
 use App\Models\FamilyRole;
 use App\Models\FamilyUserRole;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -144,5 +145,91 @@ class ShoppingListSharingTest extends TestCase
 
         $this->deleteJson("/api/shopping-lists/{$shoppingListId}")
             ->assertForbidden();
+    }
+
+    public function test_editor_can_manage_shopping_list_items_and_viewer_cannot(): void
+    {
+        $owner = User::factory()->create();
+        $editor = User::factory()->create();
+        $viewer = User::factory()->create();
+
+        $product = Product::query()->create([
+            'name' => 'Apples',
+            'picture' => 'https://example.com/apples.jpg',
+            'description' => 'Fresh apples',
+            'quantity_type' => 'kg',
+        ]);
+
+        $this->actingAs($owner);
+
+        $shoppingListId = $this->postJson('/api/shopping-lists', [
+            'name' => 'Market list',
+            'description' => 'Weekly produce',
+        ])->assertCreated()->json('id');
+
+        $this->postJson("/api/shopping-lists/{$shoppingListId}/users", [
+            'user_id' => $editor->id,
+            'permission' => 'edit',
+        ])->assertCreated();
+
+        $this->postJson("/api/shopping-lists/{$shoppingListId}/users", [
+            'user_id' => $viewer->id,
+            'permission' => 'view',
+        ])->assertCreated();
+
+        $this->actingAs($editor);
+
+        $itemId = $this->postJson("/api/shopping-lists/{$shoppingListId}/items", [
+            'product_id' => $product->id,
+            'quantity' => 1.5,
+            'notes' => 'Buy ripe ones',
+            'is_completed' => false,
+        ])->assertCreated()
+            ->json('id');
+
+        $this->putJson("/api/shopping-lists/{$shoppingListId}/items/{$itemId}", [
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'notes' => 'Updated note',
+            'is_completed' => true,
+        ])->assertOk()
+            ->assertJsonFragment(['notes' => 'Updated note']);
+
+        $this->actingAs($viewer);
+
+        $this->getJson("/api/shopping-lists/{$shoppingListId}")
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'Apples'])
+            ->assertJsonFragment(['notes' => 'Updated note']);
+
+        $this->postJson("/api/shopping-lists/{$shoppingListId}/items", [
+            'product_id' => $product->id,
+            'quantity' => 1,
+        ])->assertForbidden();
+    }
+
+    public function test_product_cannot_be_deleted_while_used_in_shopping_list_item(): void
+    {
+        $owner = User::factory()->create();
+        $product = Product::query()->create([
+            'name' => 'Bread',
+            'picture' => null,
+            'description' => 'Wholegrain bread',
+            'quantity_type' => 'pcs',
+        ]);
+
+        $this->actingAs($owner);
+
+        $shoppingListId = $this->postJson('/api/shopping-lists', [
+            'name' => 'Bakery list',
+        ])->assertCreated()->json('id');
+
+        $this->postJson("/api/shopping-lists/{$shoppingListId}/items", [
+            'product_id' => $product->id,
+            'quantity' => 2,
+        ])->assertCreated();
+
+        $this->deleteJson("/api/products/{$product->id}")
+            ->assertStatus(422);
     }
 }

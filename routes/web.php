@@ -6,7 +6,7 @@ use App\Models\Family;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('users.index');
+    return redirect()->route('shopping-lists.index');
 });
 
 Route::middleware('guest')->group(function () {
@@ -19,6 +19,9 @@ Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth'
 Route::view('/users', 'users')->middleware('auth')->name('users.index');
 Route::view('/families', 'families')->middleware('auth')->name('families.index');
 Route::view('/shopping-lists', 'shopping-lists')->middleware('auth')->name('shopping-lists.index');
+Route::get('/shopping-lists/{id}', function ($id) {
+    return view('shopping-list-view', ['listId' => $id]);
+})->middleware('auth')->name('shopping-list.view');
 Route::view('/access-control', 'access-control')->middleware('auth')->name('access-control.index');
 Route::get('/profile', function () {
     $user = auth()->user();

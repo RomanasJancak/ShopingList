@@ -36,7 +36,7 @@ class SessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('users.index'));
+        return redirect()->intended(route('shopping-lists.index'));
     }
 
     public function destroy(Request $request): RedirectResponse

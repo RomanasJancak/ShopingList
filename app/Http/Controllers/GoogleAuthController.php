@@ -55,14 +55,14 @@ class GoogleAuthController extends Controller
                 ->exists();
 
             if ($alreadyLinkedToAnother) {
-                return redirect('/users')->with('oauth_error', 'This Google account is already linked to another user.');
+                return redirect()->route('shopping-lists.index')->with('oauth_error', 'This Google account is already linked to another user.');
             }
 
             $authenticatedUser->google_id = $googleId;
             $authenticatedUser->google_avatar = $googleAvatar;
             $authenticatedUser->save();
 
-            return redirect('/users')->with('oauth_status', 'Google account linked successfully.');
+            return redirect()->route('shopping-lists.index')->with('oauth_status', 'Google account linked successfully.');
         }
 
         $userByGoogle = User::query()->where('google_id', $googleId)->first();
@@ -70,7 +70,7 @@ class GoogleAuthController extends Controller
         if ($userByGoogle) {
             Auth::login($userByGoogle, true);
 
-            return redirect('/users')->with('oauth_status', 'Signed in with Google.');
+            return redirect()->route('shopping-lists.index')->with('oauth_status', 'Signed in with Google.');
         }
 
         if ($googleEmail) {
@@ -83,7 +83,7 @@ class GoogleAuthController extends Controller
 
                 Auth::login($userByEmail, true);
 
-                return redirect('/users')->with('oauth_status', 'Google account linked to your existing account.');
+                return redirect()->route('shopping-lists.index')->with('oauth_status', 'Google account linked to your existing account.');
             }
         }
 
@@ -97,7 +97,7 @@ class GoogleAuthController extends Controller
 
         Auth::login($newUser, true);
 
-        return redirect('/users')->with('oauth_status', 'New account created with Google.');
+        return redirect()->route('shopping-lists.index')->with('oauth_status', 'New account created with Google.');
     }
 
     private function generateFallbackEmail(string $googleId): string

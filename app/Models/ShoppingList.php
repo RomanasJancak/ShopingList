@@ -36,4 +36,9 @@ class ShoppingList extends Model
     {
         return $this->hasMany(ShoppingListFamilyUser::class);
     }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(ShoppingListItem::class);
+    }
 }

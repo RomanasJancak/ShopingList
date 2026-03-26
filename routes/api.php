@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccessControlController;
 use App\Http\Controllers\FamilyController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ShoppingListController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +16,11 @@ Route::middleware('web')->group(function () {
 	Route::delete('/users/{user}', [UserController::class, 'destroy']);
 
 	Route::middleware('auth')->group(function () {
+		Route::get('/products', [ProductController::class, 'index']);
+		Route::post('/products', [ProductController::class, 'store']);
+		Route::put('/products/{product}', [ProductController::class, 'update']);
+		Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+
 		Route::get('/access-control/capabilities', [AccessControlController::class, 'capabilities']);
 
 		Route::get('/access-control/permissions', [AccessControlController::class, 'permissions'])
@@ -38,6 +44,9 @@ Route::middleware('web')->group(function () {
 		Route::get('/shopping-lists', [ShoppingListController::class, 'index']);
 		Route::post('/shopping-lists', [ShoppingListController::class, 'store']);
 		Route::get('/shopping-lists/{shoppingList}', [ShoppingListController::class, 'show']);
+		Route::post('/shopping-lists/{shoppingList}/items', [ShoppingListController::class, 'storeItem']);
+		Route::put('/shopping-lists/{shoppingList}/items/{item}', [ShoppingListController::class, 'updateItem']);
+		Route::delete('/shopping-lists/{shoppingList}/items/{item}', [ShoppingListController::class, 'destroyItem']);
 		Route::put('/shopping-lists/{shoppingList}', [ShoppingListController::class, 'update']);
 		Route::delete('/shopping-lists/{shoppingList}', [ShoppingListController::class, 'destroy']);
 		Route::post('/shopping-lists/{shoppingList}/users', [ShoppingListController::class, 'shareUser']);

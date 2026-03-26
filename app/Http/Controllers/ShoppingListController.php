@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Family;
 use App\Models\FamilyUserRole;
+use App\Models\Product;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListFamily;
 use App\Models\ShoppingListFamilyUser;
+use App\Models\ShoppingListItem;
 use App\Models\ShoppingListUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -79,6 +81,7 @@ class ShoppingListController extends Controller
 
         $shoppingList->load([
             'owner:id,name,email',
+            'items.product:id,name,picture,description,quantity_type',
             'userShares.user:id,name,email',
             'familyShares.family:id,name,owner_user_id',
             'familyMemberShares.family:id,name,owner_user_id',
@@ -92,9 +95,81 @@ class ShoppingListController extends Controller
             'owner_user_id' => $shoppingList->owner_user_id,
             'owner' => $shoppingList->owner,
             'effective_permission' => $this->resolveEffectivePermission($shoppingList, $userId, $familyIds),
+            'items' => $shoppingList->items,
             'user_shares' => $shoppingList->userShares,
             'family_shares' => $shoppingList->familyShares,
             'family_member_shares' => $shoppingList->familyMemberShares,
+        ]);
+    }
+
+    public function storeItem(ShoppingList $shoppingList, Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $familyIds = $this->getUserFamilyIds($userId);
+
+        $this->abortUnlessListEditable($shoppingList, $userId, $familyIds);
+
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'quantity' => ['required', 'numeric', 'gt:0'],
+            'notes' => ['nullable', 'string'],
+            'is_completed' => ['nullable', 'boolean'],
+        ]);
+
+        $item = ShoppingListItem::query()->create([
+            'shopping_list_id' => $shoppingList->id,
+            'product_id' => $validated['product_id'],
+            'quantity' => $validated['quantity'],
+            'notes' => $validated['notes'] ?? null,
+            'is_completed' => $validated['is_completed'] ?? false,
+        ]);
+
+        $item->load('product:id,name,picture,description,quantity_type');
+
+        return response()->json($item, 201);
+    }
+
+    public function updateItem(ShoppingList $shoppingList, ShoppingListItem $item, Request $request): JsonResponse
+    {
+        abort_if($item->shopping_list_id !== $shoppingList->id, 404);
+
+        $userId = $request->user()->id;
+        $familyIds = $this->getUserFamilyIds($userId);
+
+        $this->abortUnlessListEditable($shoppingList, $userId, $familyIds);
+
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'quantity' => ['required', 'numeric', 'gt:0'],
+            'notes' => ['nullable', 'string'],
+            'is_completed' => ['nullable', 'boolean'],
+        ]);
+
+        $item->update([
+            'product_id' => $validated['product_id'],
+            'quantity' => $validated['quantity'],
+            'notes' => $validated['notes'] ?? null,
+            'is_completed' => $validated['is_completed'] ?? false,
+        ]);
+
+        $item->load('product:id,name,picture,description,quantity_type');
+
+        return response()->json($item);
+    }
+
+    public function destroyItem(ShoppingList $shoppingList, ShoppingListItem $item, Request $request): JsonResponse
+    {
+        abort_if($item->shopping_list_id !== $shoppingList->id, 404);
+
+        $userId = $request->user()->id;
+        $familyIds = $this->getUserFamilyIds($userId);
+
+        $this->abortUnlessListEditable($shoppingList, $userId, $familyIds);
+
+        $item->delete();
+
+        return response()->json([
+            'message' => 'Shopping list item deleted successfully.',
         ]);
     }
 

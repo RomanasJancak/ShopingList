@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const shoppingLists = ref([]);
+const products = ref([]);
 const users = ref([]);
 const families = ref([]);
 const selectedListId = ref('');
@@ -36,9 +37,28 @@ const familyMemberForm = reactive({
     permission: 'view',
 });
 
+const productForm = reactive({
+    name: '',
+    pictureFile: null,
+    description: '',
+    quantityType: 'pcs',
+});
+
+const productPictureMaxBytes = 4 * 1024 * 1024;
+
+const itemForm = reactive({
+    productId: '',
+    quantity: '',
+    notes: '',
+    isCompleted: false,
+});
+
 const directSharePermissionEdits = reactive({});
 const familySharePermissionEdits = reactive({});
 const familyMemberPermissionEdits = reactive({});
+
+const editingProductId = ref(null);
+const editingItemId = ref(null);
 
 const effectivePermission = computed(() => selectedList.value?.effective_permission || null);
 const canEditList = computed(() => ['owner', 'edit'].includes(effectivePermission.value));
@@ -49,6 +69,7 @@ const resetSelectedListState = () => {
     availableFamilyMembers.value = [];
     listEditForm.name = '';
     listEditForm.description = '';
+    resetItemForm();
 };
 
 const loadUsers = async () => {
@@ -59,6 +80,11 @@ const loadUsers = async () => {
 const loadFamilies = async () => {
     const response = await window.axios.get('/api/families');
     families.value = response.data;
+};
+
+const loadProducts = async () => {
+    const response = await window.axios.get('/api/products');
+    products.value = response.data;
 };
 
 const loadShoppingLists = async () => {
@@ -189,6 +215,200 @@ const deleteShoppingList = async () => {
         await loadShoppingLists();
     } catch (requestError) {
         error.value = requestError.response?.data?.message || 'Unable to delete shopping list.';
+    }
+};
+
+const resetProductForm = () => {
+    productForm.name = '';
+    productForm.pictureFile = null;
+    productForm.description = '';
+    productForm.quantityType = 'pcs';
+    editingProductId.value = null;
+};
+
+const startEditProduct = (product) => {
+    productForm.name = product.name;
+    productForm.pictureFile = null;
+    productForm.description = product.description || '';
+    productForm.quantityType = product.quantity_type;
+    editingProductId.value = product.id;
+};
+
+const formatBytes = (bytes) => {
+    if (!Number.isFinite(bytes) || bytes < 0) {
+        return 'unknown size';
+    }
+
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
+
+    const kb = bytes / 1024;
+    if (kb < 1024) {
+        return `${kb.toFixed(1)} KB`;
+    }
+
+    const mb = kb / 1024;
+    return `${mb.toFixed(2)} MB`;
+};
+
+const onProductPictureSelected = (event) => {
+    const [file] = event.target.files || [];
+    if (!file) {
+        productForm.pictureFile = null;
+        return;
+    }
+
+    if (file.size > productPictureMaxBytes) {
+        const selectedSize = formatBytes(file.size);
+        const allowedSize = formatBytes(productPictureMaxBytes);
+
+        console.error('Selected product picture exceeds allowed size.', {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            selectedSize,
+            allowedSize,
+        });
+
+        error.value = `Picture is too large (${selectedSize}). Maximum allowed size is ${allowedSize}.`;
+        productForm.pictureFile = null;
+        event.target.value = '';
+        return;
+    }
+
+    error.value = '';
+    productForm.pictureFile = file;
+};
+
+const submitProduct = async () => {
+    error.value = '';
+
+    try {
+        const payload = new FormData();
+        payload.append('name', productForm.name);
+        payload.append('description', productForm.description || '');
+        payload.append('quantity_type', productForm.quantityType);
+
+        if (productForm.pictureFile) {
+            payload.append('picture', productForm.pictureFile);
+        }
+
+        if (editingProductId.value) {
+            payload.append('_method', 'PUT');
+            await window.axios.post(`/api/products/${editingProductId.value}`, payload, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+        } else {
+            await window.axios.post('/api/products', payload, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+        }
+
+        resetProductForm();
+        await loadProducts();
+    } catch (requestError) {
+        const responseData = requestError.response?.data;
+        const pictureValidationError = responseData?.errors?.picture?.[0];
+
+        console.error('Failed to save product.', {
+            message: requestError.message,
+            status: requestError.response?.status,
+            statusText: requestError.response?.statusText,
+            responseData,
+            validationErrors: responseData?.errors,
+            selectedPicture: productForm.pictureFile
+                ? {
+                    name: productForm.pictureFile.name,
+                    type: productForm.pictureFile.type,
+                    size: productForm.pictureFile.size,
+                }
+                : null,
+        });
+
+        error.value = pictureValidationError || responseData?.message || 'Failed to save product.';
+    }
+};
+
+const deleteProduct = async (productId) => {
+    if (!window.confirm('Delete this product?')) {
+        return;
+    }
+
+    error.value = '';
+
+    try {
+        await window.axios.delete(`/api/products/${productId}`);
+        await loadProducts();
+
+        if (itemForm.productId === String(productId)) {
+            itemForm.productId = '';
+        }
+    } catch (requestError) {
+        error.value = requestError.response?.data?.message || 'Unable to delete product.';
+    }
+};
+
+const resetItemForm = () => {
+    itemForm.productId = '';
+    itemForm.quantity = '';
+    itemForm.notes = '';
+    itemForm.isCompleted = false;
+    editingItemId.value = null;
+};
+
+const startEditItem = (item) => {
+    itemForm.productId = String(item.product_id);
+    itemForm.quantity = item.quantity;
+    itemForm.notes = item.notes || '';
+    itemForm.isCompleted = Boolean(item.is_completed);
+    editingItemId.value = item.id;
+};
+
+const submitItem = async () => {
+    if (!selectedListId.value) {
+        return;
+    }
+
+    error.value = '';
+
+    try {
+        const payload = {
+            product_id: Number(itemForm.productId),
+            quantity: Number(itemForm.quantity),
+            notes: itemForm.notes || null,
+            is_completed: itemForm.isCompleted,
+        };
+
+        if (editingItemId.value) {
+            await window.axios.put(`/api/shopping-lists/${selectedListId.value}/items/${editingItemId.value}`, payload);
+        } else {
+            await window.axios.post(`/api/shopping-lists/${selectedListId.value}/items`, payload);
+        }
+
+        resetItemForm();
+        await loadSelectedList();
+    } catch (requestError) {
+        error.value = requestError.response?.data?.message || 'Unable to save item.';
+    }
+};
+
+const deleteItem = async (itemId) => {
+    if (!window.confirm('Delete this item from the shopping list?')) {
+        return;
+    }
+
+    error.value = '';
+
+    try {
+        await window.axios.delete(`/api/shopping-lists/${selectedListId.value}/items/${itemId}`);
+        await loadSelectedList();
+    } catch (requestError) {
+        error.value = requestError.response?.data?.message || 'Unable to delete item.';
     }
 };
 
@@ -347,7 +567,7 @@ onMounted(async () => {
     error.value = '';
 
     try {
-        await Promise.all([loadUsers(), loadFamilies()]);
+        await Promise.all([loadUsers(), loadFamilies(), loadProducts()]);
         await loadShoppingLists();
     } catch {
         error.value = 'Failed to load shopping list data.';
@@ -374,6 +594,48 @@ onMounted(async () => {
             </form>
         </div>
 
+        <div class="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+            <h2 class="text-lg font-semibold mb-4">Products</h2>
+
+            <form class="grid gap-4 md:grid-cols-4 mb-4" @submit.prevent="submitProduct">
+                <input v-model="productForm.name" type="text" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Product name">
+                <input type="file" accept="image/*" class="w-full border border-gray-300 rounded px-3 py-2" @change="onProductPictureSelected">
+                <input v-model="productForm.description" type="text" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Description">
+                <select v-model="productForm.quantityType" class="w-full border border-gray-300 rounded px-3 py-2">
+                    <option value="pcs">pcs</option>
+                    <option value="kg">kg</option>
+                </select>
+                <div class="md:col-span-4 flex gap-2">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        {{ editingProductId ? 'Update Product' : 'Create Product' }}
+                    </button>
+                    <button v-if="editingProductId" type="button" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300" @click="resetProductForm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+
+            <div v-if="products.length" class="space-y-2">
+                <div v-for="product in products" :key="product.id" class="border border-gray-200 rounded p-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p class="font-medium">{{ product.name }}</p>
+                        <img v-if="product.picture_url" :src="product.picture_url" alt="Product image" class="w-16 h-16 object-cover rounded border border-gray-200 my-1">
+                        <p class="text-sm text-gray-600">{{ product.description || 'No description' }}</p>
+                        <p class="text-sm text-gray-600">Quantity type: {{ product.quantity_type }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" class="bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700" @click="startEditProduct(product)">
+                            Edit
+                        </button>
+                        <button type="button" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" @click="deleteProduct(product.id)">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <p v-else class="text-sm text-gray-500">No products found.</p>
+        </div>
+
         <div class="bg-white p-4 rounded-lg border border-gray-200">
             <div class="grid gap-4 md:grid-cols-2 mb-4">
                 <select v-model="selectedListId" class="w-full border border-gray-300 rounded px-3 py-2" @change="loadSelectedList">
@@ -383,8 +645,14 @@ onMounted(async () => {
                     </option>
                 </select>
 
-                <div v-if="selectedList" class="text-sm text-gray-700 flex items-center">
+                <div v-if="selectedList" class="text-sm text-gray-700 flex items-center gap-3">
                     Effective permission: <strong class="ml-1">{{ selectedList.effective_permission }}</strong>
+                    <a
+                        :href="`/shopping-lists/${selectedList.id}`"
+                        class="ml-auto bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 text-sm font-medium"
+                    >
+                        Open List View
+                    </a>
                 </div>
             </div>
 
@@ -395,6 +663,53 @@ onMounted(async () => {
                     <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 disabled:bg-gray-300" :disabled="!canEditList">Update</button>
                     <button type="button" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-300" :disabled="!canManageShares" @click="deleteShoppingList">Delete</button>
                 </form>
+
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <h3 class="font-medium mb-3">List Items</h3>
+
+                    <form class="grid gap-4 md:grid-cols-4 mb-4" @submit.prevent="submitItem">
+                        <select v-model="itemForm.productId" class="w-full border border-gray-300 rounded px-3 py-2" :disabled="!canEditList">
+                            <option value="">Select product</option>
+                            <option v-for="product in products" :key="`item-product-${product.id}`" :value="String(product.id)">
+                                {{ product.name }} ({{ product.quantity_type }})
+                            </option>
+                        </select>
+                        <input v-model="itemForm.quantity" type="number" step="0.01" min="0.01" class="w-full border border-gray-300 rounded px-3 py-2" :disabled="!canEditList" placeholder="Quantity">
+                        <input v-model="itemForm.notes" type="text" class="w-full border border-gray-300 rounded px-3 py-2" :disabled="!canEditList" placeholder="Notes">
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input v-model="itemForm.isCompleted" type="checkbox" :disabled="!canEditList">
+                            Completed
+                        </label>
+                        <div class="md:col-span-4 flex gap-2">
+                            <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 disabled:bg-gray-300" :disabled="!canEditList">
+                                {{ editingItemId ? 'Update Item' : 'Add Item' }}
+                            </button>
+                            <button v-if="editingItemId" type="button" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300" @click="resetItemForm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+
+                    <div v-if="selectedList.items?.length" class="space-y-2">
+                        <div v-for="item in selectedList.items" :key="item.id" class="border border-gray-200 rounded px-3 py-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between bg-white">
+                            <div>
+                                <p class="font-medium">{{ item.product?.name }}</p>
+                                <p class="text-sm text-gray-600">{{ item.quantity }} {{ item.product?.quantity_type }}</p>
+                                <p class="text-sm text-gray-600">{{ item.notes || 'No notes' }}</p>
+                                <p class="text-sm text-gray-600">Status: {{ item.is_completed ? 'completed' : 'pending' }}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" class="bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700 disabled:bg-gray-300" :disabled="!canEditList" @click="startEditItem(item)">
+                                    Edit
+                                </button>
+                                <button type="button" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 disabled:bg-gray-300" :disabled="!canEditList" @click="deleteItem(item.id)">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p v-else class="text-sm text-gray-500">No items in this shopping list yet.</p>
+                </div>
 
                 <div class="grid gap-6 md:grid-cols-3">
                     <form class="space-y-2" @submit.prevent="shareWithUser">
