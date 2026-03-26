@@ -14,7 +14,7 @@ class ProductImageUploadTest extends TestCase
 
     private const SAMPLE_PNG_PATH = __DIR__.'/../Fixtures/product-sample.png';
 
-    public function test_product_picture_is_uploaded_and_resized_to_128x128_on_create(): void
+    public function test_product_picture_is_uploaded_on_create(): void
     {
         Storage::fake('public');
         $user = User::factory()->create();
@@ -36,13 +36,10 @@ class ProductImageUploadTest extends TestCase
         Storage::disk('public')->assertExists($path);
 
         $imageData = Storage::disk('public')->get($path);
-        [$width, $height] = getimagesizefromstring($imageData);
-
-        $this->assertSame(128, $width);
-        $this->assertSame(128, $height);
+        $this->assertNotFalse(getimagesizefromstring($imageData));
     }
 
-    public function test_product_picture_is_replaced_and_resized_on_update(): void
+    public function test_product_picture_is_replaced_on_update(): void
     {
         Storage::fake('public');
         $user = User::factory()->create();
@@ -76,9 +73,6 @@ class ProductImageUploadTest extends TestCase
         Storage::disk('public')->assertExists($newPath);
 
         $imageData = Storage::disk('public')->get($newPath);
-        [$width, $height] = getimagesizefromstring($imageData);
-
-        $this->assertSame(128, $width);
-        $this->assertSame(128, $height);
+        $this->assertNotFalse(getimagesizefromstring($imageData));
     }
 }

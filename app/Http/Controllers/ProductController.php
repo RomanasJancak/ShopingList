@@ -6,12 +6,10 @@ use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\Process\Process;
 
 class ProductController extends Controller
 {
@@ -34,7 +32,7 @@ class ProductController extends Controller
 
         $picturePath = null;
         if ($request->hasFile('picture')) {
-            $picturePath = $this->storeResizedPicture($request->file('picture')->getRealPath());
+            $picturePath = $this->storeUploadedPicture($request->file('picture'));
         }
 
         $product = Product::create([
@@ -55,7 +53,7 @@ class ProductController extends Controller
 
         $newPicturePath = $product->picture;
         if ($request->hasFile('picture')) {
-            $newPicturePath = $this->storeResizedPicture($request->file('picture')->getRealPath());
+            $newPicturePath = $this->storeUploadedPicture($request->file('picture'));
             $this->deletePictureIfExists($product->picture);
         }
 
@@ -93,64 +91,14 @@ class ProductController extends Controller
         ];
     }
 
-    private function storeResizedPicture(string $sourcePath): string
+    private function storeUploadedPicture(UploadedFile $picture): string
     {
-        $path = 'products/'.Str::uuid().'.jpg';
-        $tempOutputBase = tempnam(sys_get_temp_dir(), 'product_');
+        $extension = strtolower($picture->getClientOriginalExtension() ?: $picture->extension() ?: 'jpg');
+        $filename = Str::uuid().'.'.$extension;
 
-        if ($tempOutputBase === false) {
-            abort(500, 'Could not create temporary file for image processing.');
-        }
+        Storage::disk('public')->putFileAs('products', $picture, $filename);
 
-        $tempOutput = $tempOutputBase.'.jpg';
-        @unlink($tempOutputBase);
-
-        $process = new Process([
-            'convert',
-            $sourcePath,
-            '-auto-orient',
-            '-resize',
-            '128x128^',
-            '-gravity',
-            'center',
-            '-extent',
-            '128x128',
-            $tempOutput,
-        ]);
-
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            Log::error('Product image processing failed.', [
-                'source_path' => $sourcePath,
-                'error_output' => trim($process->getErrorOutput()),
-                'output' => trim($process->getOutput()),
-                'exit_code' => $process->getExitCode(),
-            ]);
-
-            @unlink($tempOutput);
-
-            $message = 'Unable to process uploaded image.';
-            if (config('app.debug')) {
-                $details = trim($process->getErrorOutput()) ?: trim($process->getOutput());
-                if ($details !== '') {
-                    $message .= ' '.$details;
-                }
-            }
-
-            abort(422, $message);
-        }
-
-        $imageData = file_get_contents($tempOutput);
-        @unlink($tempOutput);
-
-        if ($imageData === false) {
-            abort(500, 'Could not read processed image.');
-        }
-
-        Storage::disk('public')->put($path, $imageData);
-
-        return $path;
+        return 'products/'.$filename;
     }
 
     private function deletePictureIfExists(?string $path): void

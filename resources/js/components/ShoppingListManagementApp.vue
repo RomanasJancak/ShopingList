@@ -45,6 +45,8 @@ const productForm = reactive({
 });
 
 const productPictureMaxBytes = 4 * 1024 * 1024;
+const productPictureTargetSize = 128;
+const processingProductPicture = ref(false);
 
 const itemForm = reactive({
     productId: '',
@@ -252,7 +254,59 @@ const formatBytes = (bytes) => {
     return `${mb.toFixed(2)} MB`;
 };
 
-const onProductPictureSelected = (event) => {
+const loadImageElement = (file) => {
+    return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(image);
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Failed to load image in browser.'));
+        };
+
+        image.src = objectUrl;
+    });
+};
+
+const resizeImageForProductUpload = async (file) => {
+    const image = await loadImageElement(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = productPictureTargetSize;
+    canvas.height = productPictureTargetSize;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+        throw new Error('Canvas is not available in this browser.');
+    }
+
+    const scale = Math.max(productPictureTargetSize / image.width, productPictureTargetSize / image.height);
+    const scaledWidth = Math.ceil(image.width * scale);
+    const scaledHeight = Math.ceil(image.height * scale);
+    const drawX = Math.floor((productPictureTargetSize - scaledWidth) / 2);
+    const drawY = Math.floor((productPictureTargetSize - scaledHeight) / 2);
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, productPictureTargetSize, productPictureTargetSize);
+    context.drawImage(image, drawX, drawY, scaledWidth, scaledHeight);
+
+    const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.85);
+    });
+
+    if (!blob) {
+        throw new Error('Failed to convert resized image to JPEG.');
+    }
+
+    const originalBaseName = file.name.replace(/\.[^.]+$/, '') || 'product-picture';
+    return new File([blob], `${originalBaseName}-128.jpg`, { type: 'image/jpeg' });
+};
+
+const onProductPictureSelected = async (event) => {
     const [file] = event.target.files || [];
     if (!file) {
         productForm.pictureFile = null;
@@ -277,11 +331,47 @@ const onProductPictureSelected = (event) => {
         return;
     }
 
-    error.value = '';
-    productForm.pictureFile = file;
+    processingProductPicture.value = true;
+
+    try {
+        const resizedFile = await resizeImageForProductUpload(file);
+
+        if (resizedFile.size > productPictureMaxBytes) {
+            const selectedSize = formatBytes(resizedFile.size);
+            const allowedSize = formatBytes(productPictureMaxBytes);
+
+            error.value = `Resized picture is too large (${selectedSize}). Maximum allowed size is ${allowedSize}.`;
+            productForm.pictureFile = null;
+            event.target.value = '';
+            return;
+        }
+
+        error.value = '';
+        productForm.pictureFile = resizedFile;
+    } catch (resizeError) {
+        console.error('Failed to resize product picture in browser.', {
+            message: resizeError.message,
+            selectedPicture: {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+            },
+        });
+
+        error.value = 'Failed to prepare picture for upload.';
+        productForm.pictureFile = null;
+        event.target.value = '';
+    } finally {
+        processingProductPicture.value = false;
+    }
 };
 
 const submitProduct = async () => {
+    if (processingProductPicture.value) {
+        error.value = 'Please wait until picture processing finishes.';
+        return;
+    }
+
     error.value = '';
 
     try {
@@ -599,20 +689,21 @@ onMounted(async () => {
 
             <form class="grid gap-4 md:grid-cols-4 mb-4" @submit.prevent="submitProduct">
                 <input v-model="productForm.name" type="text" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Product name">
-                <input type="file" accept="image/*" class="w-full border border-gray-300 rounded px-3 py-2" @change="onProductPictureSelected">
+                <input type="file" accept="image/*" class="w-full border border-gray-300 rounded px-3 py-2" :disabled="processingProductPicture" @change="onProductPictureSelected">
                 <input v-model="productForm.description" type="text" class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Description">
                 <select v-model="productForm.quantityType" class="w-full border border-gray-300 rounded px-3 py-2">
                     <option value="pcs">pcs</option>
                     <option value="kg">kg</option>
                 </select>
                 <div class="md:col-span-4 flex gap-2">
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300" :disabled="processingProductPicture">
                         {{ editingProductId ? 'Update Product' : 'Create Product' }}
                     </button>
                     <button v-if="editingProductId" type="button" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300" @click="resetProductForm">
                         Cancel
                     </button>
                 </div>
+                <p v-if="processingProductPicture" class="md:col-span-4 text-sm text-gray-500">Preparing image for upload...</p>
             </form>
 
             <div v-if="products.length" class="space-y-2">
