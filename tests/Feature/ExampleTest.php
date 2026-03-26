@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Family;
 use App\Models\FamilyRole;
 use App\Models\FamilyUserRole;
+use App\Models\ShoppingList;
+use App\Models\ShoppingListUser;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -70,5 +72,59 @@ class ExampleTest extends TestCase
             ->assertSee('Joined Family')
             ->assertSee(route('families.index').'?family='.$ownedFamily->id, false)
             ->assertSee(route('families.index').'?family='.$joinedFamily->id, false);
+    }
+
+    public function test_single_assigned_shopping_list_becomes_user_default(): void
+    {
+        $user = User::factory()->create();
+
+        $shoppingList = ShoppingList::create([
+            'name' => 'Only List',
+            'description' => null,
+            'owner_user_id' => $user->id,
+        ]);
+
+        ShoppingListUser::create([
+            'shopping_list_id' => $shoppingList->id,
+            'user_id' => $user->id,
+            'permission' => 'owner',
+        ]);
+
+        $this->actingAs($user)->get(route('profile.show'))->assertOk();
+
+        $user->refresh();
+
+        $this->assertSame($shoppingList->id, $user->default_shopping_list_id);
+    }
+
+    public function test_login_redirects_to_default_shopping_list_view_when_preference_enabled(): void
+    {
+        $user = User::factory()->create([
+            'password' => 'password',
+            'load_default_shopping_list_on_login' => true,
+        ]);
+
+        $shoppingList = ShoppingList::create([
+            'name' => 'Default List',
+            'description' => null,
+            'owner_user_id' => $user->id,
+        ]);
+
+        ShoppingListUser::create([
+            'shopping_list_id' => $shoppingList->id,
+            'user_id' => $user->id,
+            'permission' => 'owner',
+        ]);
+
+        $user->update([
+            'default_shopping_list_id' => $shoppingList->id,
+        ]);
+
+        $response = $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertRedirect(route('shopping-list.view', ['id' => $shoppingList->id]));
     }
 }

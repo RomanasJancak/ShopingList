@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\UserShoppingListPreferenceResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,10 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
+    public function __construct(private readonly UserShoppingListPreferenceResolver $shoppingListPreferenceResolver)
+    {
+    }
+
     public function redirect(): RedirectResponse
     {
         session()->forget('google_linking');
@@ -70,7 +75,8 @@ class GoogleAuthController extends Controller
         if ($userByGoogle) {
             Auth::login($userByGoogle, true);
 
-            return redirect()->route('shopping-lists.index')->with('oauth_status', 'Signed in with Google.');
+            return redirect($this->shoppingListPreferenceResolver->resolvePostLoginRoute($userByGoogle))
+                ->with('oauth_status', 'Signed in with Google.');
         }
 
         if ($googleEmail) {
@@ -83,7 +89,8 @@ class GoogleAuthController extends Controller
 
                 Auth::login($userByEmail, true);
 
-                return redirect()->route('shopping-lists.index')->with('oauth_status', 'Google account linked to your existing account.');
+                return redirect($this->shoppingListPreferenceResolver->resolvePostLoginRoute($userByEmail))
+                    ->with('oauth_status', 'Google account linked to your existing account.');
             }
         }
 
@@ -97,7 +104,8 @@ class GoogleAuthController extends Controller
 
         Auth::login($newUser, true);
 
-        return redirect()->route('shopping-lists.index')->with('oauth_status', 'New account created with Google.');
+        return redirect($this->shoppingListPreferenceResolver->resolvePostLoginRoute($newUser))
+            ->with('oauth_status', 'New account created with Google.');
     }
 
     private function generateFallbackEmail(string $googleId): string

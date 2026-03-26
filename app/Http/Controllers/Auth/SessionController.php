@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\UserShoppingListPreferenceResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,10 @@ use Illuminate\View\View;
 
 class SessionController extends Controller
 {
+    public function __construct(private readonly UserShoppingListPreferenceResolver $shoppingListPreferenceResolver)
+    {
+    }
+
     public function create(): View
     {
         return view('auth.login');
@@ -36,7 +41,9 @@ class SessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('shopping-lists.index'));
+        $redirectTo = $this->shoppingListPreferenceResolver->resolvePostLoginRoute($request->user());
+
+        return redirect()->intended($redirectTo);
     }
 
     public function destroy(Request $request): RedirectResponse

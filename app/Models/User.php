@@ -26,6 +26,8 @@ class User extends Authenticatable
         'password',
         'google_id',
         'google_avatar',
+        'default_shopping_list_id',
+        'load_default_shopping_list_on_login',
     ];
 
     /**
@@ -48,6 +50,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'load_default_shopping_list_on_login' => 'boolean',
         ];
     }
 

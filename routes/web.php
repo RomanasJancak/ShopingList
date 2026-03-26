@@ -3,6 +3,8 @@
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Models\Family;
+use App\Support\UserShoppingListPreferenceResolver;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,6 +27,9 @@ Route::get('/shopping-lists/{id}', function ($id) {
 Route::view('/access-control', 'access-control')->middleware('auth')->name('access-control.index');
 Route::get('/profile', function () {
     $user = auth()->user();
+    $resolver = app(UserShoppingListPreferenceResolver::class);
+    $shoppingLists = $resolver->getAccessibleShoppingLists($user);
+    $resolvedDefaultShoppingList = $resolver->resolveDefaultShoppingList($user);
 
     $families = Family::query()
         ->where('owner_user_id', $user->id)
@@ -36,8 +41,42 @@ Route::get('/profile', function () {
     return view('profile', [
         'user' => $user,
         'families' => $families,
+        'shoppingLists' => $shoppingLists,
+        'resolvedDefaultShoppingListId' => $resolvedDefaultShoppingList?->id,
     ]);
 })->middleware('auth')->name('profile.show');
+
+Route::post('/profile/preferences', function (Request $request) {
+    $user = $request->user();
+    $resolver = app(UserShoppingListPreferenceResolver::class);
+    $shoppingLists = $resolver->getAccessibleShoppingLists($user);
+
+    $validated = $request->validate([
+        'default_shopping_list_id' => ['nullable', 'integer'],
+        'load_default_shopping_list_on_login' => ['nullable', 'boolean'],
+    ]);
+
+    $selectedDefaultId = $validated['default_shopping_list_id'] ?? null;
+
+    if ($selectedDefaultId !== null && ! $shoppingLists->contains('id', (int) $selectedDefaultId)) {
+        return back()->withErrors([
+            'default_shopping_list_id' => 'Selected shopping list is not available for this user.',
+        ])->withInput();
+    }
+
+    if ($shoppingLists->count() === 1) {
+        $selectedDefaultId = (int) $shoppingLists->first()->id;
+    }
+
+    $user->forceFill([
+        'default_shopping_list_id' => $selectedDefaultId,
+        'load_default_shopping_list_on_login' => $request->boolean('load_default_shopping_list_on_login'),
+    ])->save();
+
+    $resolver->resolveDefaultShoppingList($user);
+
+    return redirect()->route('profile.show')->with('status', 'Profile preferences updated.');
+})->middleware('auth')->name('profile.preferences.update');
 Route::view('/docs', 'docs')->name('docs.index');
 
 Route::prefix('auth/google')->group(function () {

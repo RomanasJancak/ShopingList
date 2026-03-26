@@ -9,6 +9,7 @@ const list = ref(null);
 const loading = ref(true);
 const error = ref('');
 const removing = ref(new Set());
+const menuOpen = ref(false);
 
 const loadList = async () => {
     loading.value = true;
@@ -44,7 +45,16 @@ const removeItem = async (itemId) => {
 };
 
 const pictureUrl = (item) => {
-    return item.product?.picture ? `/storage/${item.product.picture}` : null;
+    const picturePath = item.product?.picture;
+    if (!picturePath) {
+        return null;
+    }
+
+    if (picturePath.startsWith('products/')) {
+        return `/${picturePath}`;
+    }
+
+    return `/storage/${picturePath}`;
 };
 
 const formatQuantity = (item) => {
@@ -59,22 +69,34 @@ onMounted(loadList);
 <template>
     <div class="min-h-screen bg-gray-50">
         <!-- Header bar -->
-        <div class="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-            <a href="/shopping-lists" class="text-gray-500 hover:text-gray-800 flex items-center gap-1 text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-                Lists
-            </a>
-            <div class="flex-1 min-w-0">
+        <div class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+            <div class="min-w-0 pr-3">
                 <h1 class="text-lg font-bold text-gray-900 truncate leading-tight">
                     {{ list?.name ?? '…' }}
                 </h1>
                 <p v-if="list?.description" class="text-xs text-gray-500 truncate">{{ list.description }}</p>
             </div>
-            <span class="text-sm text-gray-400 shrink-0">
+
+            <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white p-2 text-gray-700 hover:bg-gray-50"
+                @click="menuOpen = !menuOpen"
+                aria-label="Toggle menu"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+
+        <div v-if="menuOpen" class="absolute right-4 top-16 z-30 w-56 rounded-lg border border-gray-200 bg-white shadow-lg">
+            <div class="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
                 {{ list?.items?.length ?? 0 }} item{{ (list?.items?.length ?? 0) !== 1 ? 's' : '' }}
-            </span>
+            </div>
+            <a href="/shopping-lists" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">All Shopping Lists</a>
+            <a href="/profile" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">My Profile</a>
+            <a href="/families" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">Families</a>
+            <a href="/docs" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">Docs</a>
         </div>
 
         <!-- Loading -->
