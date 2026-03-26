@@ -45,7 +45,14 @@ class UserSeeder extends Seeder
             ]
         );
         $member->syncRoles(['member']);
-
+        $member_0 = User::firstOrCreate(
+            ['email' => 'eivile.jancak@gmail.com'],
+            [
+                'name' => 'Eivile Jancak',
+                'password' => Hash::make('password123'),
+            ]
+        );
+        $member_0->syncRoles(['member']);
         User::query()
             ->where('id', '!=', $superAdmin->id)
             ->get()
