@@ -10,6 +10,8 @@ const loading = ref(true);
 const error = ref('');
 const removing = ref(new Set());
 const menuOpen = ref(false);
+const lastRemovedItem = ref(null);
+const restoringLastItem = ref(false);
 
 const loadList = async () => {
     loading.value = true;
@@ -32,15 +34,55 @@ const removeItem = async (itemId) => {
 
     removing.value = new Set([...removing.value, itemId]);
 
+    const removedItemSnapshot = list.value?.items?.find((item) => item.id === itemId) || null;
+
     try {
         await window.axios.delete(`/api/shopping-lists/${props.listId}/items/${itemId}`);
         list.value.items = list.value.items.filter((item) => item.id !== itemId);
+
+        if (removedItemSnapshot) {
+            lastRemovedItem.value = {
+                product_id: removedItemSnapshot.product_id,
+                quantity: Number(removedItemSnapshot.quantity),
+                notes: removedItemSnapshot.notes,
+                is_completed: Boolean(removedItemSnapshot.is_completed),
+                product_name: removedItemSnapshot.product?.name || 'item',
+            };
+        }
     } catch (e) {
         error.value = e.response?.data?.message || 'Failed to remove item.';
     } finally {
         const next = new Set(removing.value);
         next.delete(itemId);
         removing.value = next;
+    }
+};
+
+const undoLastRemovedItem = async () => {
+    if (!lastRemovedItem.value || restoringLastItem.value) {
+        return;
+    }
+
+    restoringLastItem.value = true;
+    error.value = '';
+
+    try {
+        const response = await window.axios.post(`/api/shopping-lists/${props.listId}/items`, {
+            product_id: lastRemovedItem.value.product_id,
+            quantity: lastRemovedItem.value.quantity,
+            notes: lastRemovedItem.value.notes,
+            is_completed: lastRemovedItem.value.is_completed,
+        });
+
+        if (list.value?.items) {
+            list.value.items = [response.data, ...list.value.items];
+        }
+
+        lastRemovedItem.value = null;
+    } catch (e) {
+        error.value = e.response?.data?.message || 'Failed to restore the last removed item.';
+    } finally {
+        restoringLastItem.value = false;
     }
 };
 
@@ -97,6 +139,25 @@ onMounted(loadList);
             <a href="/profile" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">My Profile</a>
             <a href="/families" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">Families</a>
             <a href="/docs" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">Docs</a>
+        </div>
+
+        <div
+            v-if="lastRemovedItem"
+            class="fixed bottom-4 left-4 right-4 z-30 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-lg"
+        >
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm text-amber-900">
+                    Removed {{ lastRemovedItem.product_name }}.
+                </p>
+                <button
+                    type="button"
+                    class="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                    :disabled="restoringLastItem"
+                    @click="undoLastRemovedItem"
+                >
+                    {{ restoringLastItem ? 'Undoing...' : 'Undo' }}
+                </button>
+            </div>
         </div>
 
         <!-- Loading -->
