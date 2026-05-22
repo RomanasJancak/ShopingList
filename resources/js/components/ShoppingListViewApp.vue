@@ -87,16 +87,7 @@ const undoLastRemovedItem = async () => {
 };
 
 const pictureUrl = (item) => {
-    const picturePath = item.product?.picture;
-    if (!picturePath) {
-        return null;
-    }
-
-    if (picturePath.startsWith('products/')) {
-        return `/${picturePath}`;
-    }
-
-    return `/storage/${picturePath}`;
+    return item.product?.picture_url ?? null;
 };
 
 const formatQuantity = (item) => {

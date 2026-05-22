@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Product image unavailable</title>
+  <desc id="desc">A neutral placeholder image used when a product photo is missing.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f3f4f6"/>
+      <stop offset="100%" stop-color="#e5e7eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="320" rx="36" fill="url(#bg)"/>
+  <rect x="56" y="56" width="208" height="208" rx="24" fill="#ffffff" stroke="#d1d5db" stroke-width="8"/>
+  <circle cx="120" cy="126" r="20" fill="#cbd5e1"/>
+  <path d="M88 218l44-46a16 16 0 0 1 23 0l16 16 36-40a16 16 0 0 1 24 0l44 48v24H88z" fill="#cbd5e1"/>
+</svg>

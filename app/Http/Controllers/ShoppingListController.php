@@ -12,10 +12,13 @@ use App\Models\ShoppingListItem;
 use App\Models\ShoppingListUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ShoppingListController extends Controller
 {
+    private const PRODUCT_PICTURES_DISK = 'product_pictures';
+
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
@@ -95,7 +98,7 @@ class ShoppingListController extends Controller
             'owner_user_id' => $shoppingList->owner_user_id,
             'owner' => $shoppingList->owner,
             'effective_permission' => $this->resolveEffectivePermission($shoppingList, $userId, $familyIds),
-            'items' => $shoppingList->items,
+            'items' => $shoppingList->items->map(fn (ShoppingListItem $item) => $this->toApiShoppingListItem($item))->values(),
             'user_shares' => $shoppingList->userShares,
             'family_shares' => $shoppingList->familyShares,
             'family_member_shares' => $shoppingList->familyMemberShares,
@@ -126,7 +129,7 @@ class ShoppingListController extends Controller
 
         $item->load('product:id,name,picture,description,quantity_type');
 
-        return response()->json($item, 201);
+        return response()->json($this->toApiShoppingListItem($item), 201);
     }
 
     public function updateItem(ShoppingList $shoppingList, ShoppingListItem $item, Request $request): JsonResponse
@@ -154,7 +157,7 @@ class ShoppingListController extends Controller
 
         $item->load('product:id,name,picture,description,quantity_type');
 
-        return response()->json($item);
+        return response()->json($this->toApiShoppingListItem($item));
     }
 
     public function destroyItem(ShoppingList $shoppingList, ShoppingListItem $item, Request $request): JsonResponse
@@ -528,5 +531,49 @@ class ShoppingListController extends Controller
             'view' => 1,
             default => 0,
         };
+    }
+
+    private function toApiShoppingListItem(ShoppingListItem $item): array
+    {
+        return [
+            'id' => $item->id,
+            'shopping_list_id' => $item->shopping_list_id,
+            'product_id' => $item->product_id,
+            'quantity' => $item->quantity,
+            'notes' => $item->notes,
+            'is_completed' => $item->is_completed,
+            'created_at' => $item->created_at,
+            'updated_at' => $item->updated_at,
+            'product' => $item->product ? $this->toApiProduct($item->product) : null,
+        ];
+    }
+
+    private function toApiProduct(Product $product): array
+    {
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'picture' => $product->picture,
+            'picture_url' => $this->resolvePictureUrl($product->picture),
+            'description' => $product->description,
+            'quantity_type' => $product->quantity_type,
+        ];
+    }
+
+    private function resolvePictureUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return asset('products/placeholder.svg');
+        }
+
+        if (str_starts_with($path, 'products/') && Storage::disk(self::PRODUCT_PICTURES_DISK)->exists(basename($path))) {
+            return asset($path);
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            return asset('storage/'.$path);
+        }
+
+        return asset('products/placeholder.svg');
     }
 }

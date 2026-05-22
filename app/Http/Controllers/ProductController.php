@@ -119,14 +119,18 @@ class ProductController extends Controller
     private function resolvePictureUrl(?string $path): ?string
     {
         if (! $path) {
-            return null;
+            return asset('products/placeholder.svg');
         }
 
         if (str_starts_with($path, 'products/') && Storage::disk(self::PRODUCT_PICTURES_DISK)->exists(basename($path))) {
             return asset($path);
         }
 
-        return asset('storage/'.$path);
+        if (Storage::disk('public')->exists($path)) {
+            return asset('storage/'.$path);
+        }
+
+        return asset('products/placeholder.svg');
     }
 
     private function productValidationRules(): array
