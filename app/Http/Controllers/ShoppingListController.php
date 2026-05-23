@@ -117,6 +117,7 @@ class ShoppingListController extends Controller
             'quantity' => ['required', 'numeric', 'gt:0'],
             'notes' => ['nullable', 'string'],
             'is_completed' => ['nullable', 'boolean'],
+            'is_skipped' => ['nullable', 'boolean'],
         ]);
 
         $item = ShoppingListItem::query()->create([
@@ -125,6 +126,7 @@ class ShoppingListController extends Controller
             'quantity' => $validated['quantity'],
             'notes' => $validated['notes'] ?? null,
             'is_completed' => $validated['is_completed'] ?? false,
+            'is_skipped' => $validated['is_skipped'] ?? false,
         ]);
 
         $item->load('product:id,name,picture,description,quantity_type');
@@ -146,6 +148,7 @@ class ShoppingListController extends Controller
             'quantity' => ['required', 'numeric', 'gt:0'],
             'notes' => ['nullable', 'string'],
             'is_completed' => ['nullable', 'boolean'],
+            'is_skipped' => ['nullable', 'boolean'],
         ]);
 
         $item->update([
@@ -153,6 +156,7 @@ class ShoppingListController extends Controller
             'quantity' => $validated['quantity'],
             'notes' => $validated['notes'] ?? null,
             'is_completed' => $validated['is_completed'] ?? false,
+            'is_skipped' => $validated['is_skipped'] ?? false,
         ]);
 
         $item->load('product:id,name,picture,description,quantity_type');
@@ -173,6 +177,23 @@ class ShoppingListController extends Controller
 
         return response()->json([
             'message' => 'Shopping list item deleted successfully.',
+        ]);
+    }
+
+    public function returnSkippedItems(ShoppingList $shoppingList, Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $familyIds = $this->getUserFamilyIds($userId);
+
+        $this->abortUnlessListEditable($shoppingList, $userId, $familyIds);
+
+        ShoppingListItem::query()
+            ->where('shopping_list_id', $shoppingList->id)
+            ->where('is_skipped', true)
+            ->update(['is_skipped' => false]);
+
+        return response()->json([
+            'message' => 'Skipped items returned successfully.',
         ]);
     }
 
@@ -542,6 +563,7 @@ class ShoppingListController extends Controller
             'quantity' => $item->quantity,
             'notes' => $item->notes,
             'is_completed' => $item->is_completed,
+            'is_skipped' => $item->is_skipped,
             'created_at' => $item->created_at,
             'updated_at' => $item->updated_at,
             'product' => $item->product ? $this->toApiProduct($item->product) : null,

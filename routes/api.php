@@ -46,6 +46,7 @@ Route::middleware('web')->group(function () {
 		Route::get('/shopping-lists/{shoppingList}', [ShoppingListController::class, 'show']);
 		Route::post('/shopping-lists/{shoppingList}/items', [ShoppingListController::class, 'storeItem']);
 		Route::put('/shopping-lists/{shoppingList}/items/{item}', [ShoppingListController::class, 'updateItem']);
+		Route::post('/shopping-lists/{shoppingList}/items/return-skipped', [ShoppingListController::class, 'returnSkippedItems']);
 		Route::delete('/shopping-lists/{shoppingList}/items/{item}', [ShoppingListController::class, 'destroyItem']);
 		Route::put('/shopping-lists/{shoppingList}', [ShoppingListController::class, 'update']);
 		Route::delete('/shopping-lists/{shoppingList}', [ShoppingListController::class, 'destroy']);

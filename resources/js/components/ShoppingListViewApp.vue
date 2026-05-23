@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps({
     listId: { type: String, required: true },
@@ -11,7 +11,22 @@ const loading = ref(true);
 const error = ref('');
 const removing = ref(new Set());
 const menuOpen = ref(false);
-const skippedItems = ref([]);
+
+const activeItems = computed(() => {
+    if (!list.value?.items) {
+        return [];
+    }
+
+    return list.value.items.filter((item) => !item.is_skipped);
+});
+
+const skippedItems = computed(() => {
+    if (!list.value?.items) {
+        return [];
+    }
+
+    return list.value.items.filter((item) => item.is_skipped);
+});
 
 const loadList = async () => {
     loading.value = true;
@@ -20,12 +35,45 @@ const loadList = async () => {
     try {
         const response = await window.axios.get(`/api/shopping-lists/${props.listId}`);
         list.value = response.data;
-        skippedItems.value = [];
     } catch (e) {
         error.value = e.response?.data?.message || 'Failed to load shopping list.';
     } finally {
         loading.value = false;
     }
+};
+
+const setItemSkipStateLocally = (itemId, isSkipped) => {
+    if (!list.value?.items) {
+        return;
+    }
+
+    list.value.items = list.value.items.map((item) => {
+        if (item.id !== itemId) {
+            return item;
+        }
+
+        return {
+            ...item,
+            is_skipped: isSkipped,
+        };
+    });
+};
+
+const updateItemSkipState = async (itemId, isSkipped) => {
+    const item = list.value?.items?.find((candidate) => candidate.id === itemId);
+    if (!item) {
+        return;
+    }
+
+    await window.axios.put(`/api/shopping-lists/${props.listId}/items/${itemId}`, {
+        product_id: item.product_id,
+        quantity: Number(item.quantity),
+        notes: item.notes,
+        is_completed: Boolean(item.is_completed),
+        is_skipped: isSkipped,
+    });
+
+    setItemSkipStateLocally(itemId, isSkipped);
 };
 
 const completeItem = async (itemId) => {
@@ -47,37 +95,68 @@ const completeItem = async (itemId) => {
     }
 };
 
-const skipItem = (itemId) => {
-    if (!list.value?.items?.length || removing.value.has(itemId)) {
+const skipItem = async (itemId) => {
+    if (removing.value.has(itemId)) {
         return;
     }
 
-    const itemIndex = list.value.items.findIndex((item) => item.id === itemId);
-    if (itemIndex < 0) {
-        return;
-    }
+    error.value = '';
+    removing.value = new Set([...removing.value, itemId]);
 
-    const [skippedItem] = list.value.items.splice(itemIndex, 1);
-    skippedItems.value = [...skippedItems.value, skippedItem];
+    try {
+        await updateItemSkipState(itemId, true);
+    } catch (e) {
+        error.value = e.response?.data?.message || 'Failed to skip item.';
+    } finally {
+        const next = new Set(removing.value);
+        next.delete(itemId);
+        removing.value = next;
+    }
 };
 
-const returnSkippedItem = (itemId) => {
-    const itemIndex = skippedItems.value.findIndex((item) => item.id === itemId);
-    if (itemIndex < 0 || !list.value?.items) {
+const returnSkippedItem = async (itemId) => {
+    if (removing.value.has(itemId)) {
         return;
     }
 
-    const [item] = skippedItems.value.splice(itemIndex, 1);
-    list.value.items = [item, ...list.value.items];
+    error.value = '';
+    removing.value = new Set([...removing.value, itemId]);
+
+    try {
+        await updateItemSkipState(itemId, false);
+    } catch (e) {
+        error.value = e.response?.data?.message || 'Failed to return skipped item.';
+    } finally {
+        const next = new Set(removing.value);
+        next.delete(itemId);
+        removing.value = next;
+    }
 };
 
-const returnAllSkippedItems = () => {
-    if (!skippedItems.value.length || !list.value?.items) {
+const returningAllSkipped = ref(false);
+
+const returnAllSkippedItems = async () => {
+    if (!skippedItems.value.length || returningAllSkipped.value) {
         return;
     }
 
-    list.value.items = [...skippedItems.value, ...list.value.items];
-    skippedItems.value = [];
+    returningAllSkipped.value = true;
+    error.value = '';
+
+    try {
+        await window.axios.post(`/api/shopping-lists/${props.listId}/items/return-skipped`);
+
+        if (list.value?.items) {
+            list.value.items = list.value.items.map((item) => ({
+                ...item,
+                is_skipped: false,
+            }));
+        }
+    } catch (e) {
+        error.value = e.response?.data?.message || 'Failed to return skipped items.';
+    } finally {
+        returningAllSkipped.value = false;
+    }
 };
 
 const pictureUrl = (item) => {
@@ -122,7 +201,7 @@ onMounted(loadList);
 
         <div v-if="menuOpen" class="absolute right-4 top-16 z-30 w-56 rounded-lg border border-gray-200 bg-white shadow-lg">
             <div class="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
-                {{ list?.items?.length ?? 0 }} item{{ (list?.items?.length ?? 0) !== 1 ? 's' : '' }}
+                {{ activeItems.length }} item{{ activeItems.length !== 1 ? 's' : '' }}
             </div>
             <a href="/shopping-lists" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">All Shopping Lists</a>
             <a href="/profile" class="block px-4 py-3 text-sm text-gray-800 hover:bg-gray-50">My Profile</a>
@@ -141,7 +220,7 @@ onMounted(loadList);
         </div>
 
         <!-- Empty -->
-        <div v-else-if="!list?.items?.length && skippedItems.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-400 gap-2">
+        <div v-else-if="activeItems.length === 0 && skippedItems.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-400 gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
@@ -150,12 +229,12 @@ onMounted(loadList);
 
         <!-- Item cards: image mode stays visual, no-image mode becomes a compact list -->
         <div v-else class="flex flex-col gap-2 px-3 py-3 max-w-lg mx-auto">
-            <div v-if="!list?.items?.length && skippedItems.length" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div v-if="activeItems.length === 0 && skippedItems.length" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 All active items are skipped. Use "Return skipped" to bring them back.
             </div>
 
             <div
-                v-for="item in list.items"
+                v-for="item in activeItems"
                 :key="item.id"
                 class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
                 :class="showProductPictures ? 'flex flex-col' : 'p-3'"
@@ -259,9 +338,10 @@ onMounted(loadList);
                     <button
                         type="button"
                         class="rounded-md bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+                        :disabled="returningAllSkipped"
                         @click="returnAllSkippedItems"
                     >
-                        Return skipped
+                        {{ returningAllSkipped ? 'Returning...' : 'Return skipped' }}
                     </button>
                 </div>
 
@@ -278,6 +358,7 @@ onMounted(loadList);
 
                         <button
                             type="button"
+                            :disabled="removing.has(item.id)"
                             class="rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
                             @click="returnSkippedItem(item.id)"
                         >
@@ -288,7 +369,7 @@ onMounted(loadList);
             </div>
 
             <!-- Done state shown after all items removed -->
-            <div v-if="list && list.items.length === 0 && skippedItems.length === 0" class="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
+            <div v-if="activeItems.length === 0 && skippedItems.length === 0" class="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>

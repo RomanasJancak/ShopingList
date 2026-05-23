@@ -15,6 +15,7 @@ class ShoppingListItem extends Model
         'product_id',
         'quantity',
         'is_completed',
+        'is_skipped',
         'notes',
     ];
 
@@ -23,6 +24,7 @@ class ShoppingListItem extends Model
         return [
             'quantity' => 'decimal:2',
             'is_completed' => 'boolean',
+            'is_skipped' => 'boolean',
         ];
     }
 

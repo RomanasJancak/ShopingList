@@ -192,15 +192,29 @@ class ShoppingListSharingTest extends TestCase
             'quantity' => 2,
             'notes' => 'Updated note',
             'is_completed' => true,
+            'is_skipped' => false,
         ])->assertOk()
             ->assertJsonFragment(['notes' => 'Updated note']);
+
+        $this->putJson("/api/shopping-lists/{$shoppingListId}/items/{$itemId}", [
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'notes' => 'Updated note',
+            'is_completed' => true,
+            'is_skipped' => true,
+        ])->assertOk()
+            ->assertJsonFragment(['is_skipped' => true]);
+
+        $this->postJson("/api/shopping-lists/{$shoppingListId}/items/return-skipped")
+            ->assertOk();
 
         $this->actingAs($viewer);
 
         $this->getJson("/api/shopping-lists/{$shoppingListId}")
             ->assertOk()
             ->assertJsonFragment(['name' => 'Apples'])
-            ->assertJsonFragment(['notes' => 'Updated note']);
+            ->assertJsonFragment(['notes' => 'Updated note'])
+            ->assertJsonFragment(['is_skipped' => false]);
 
         $this->postJson("/api/shopping-lists/{$shoppingListId}/items", [
             'product_id' => $product->id,
