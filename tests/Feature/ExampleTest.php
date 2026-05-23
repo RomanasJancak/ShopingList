@@ -127,4 +127,23 @@ class ExampleTest extends TestCase
 
         $response->assertRedirect(route('shopping-list.view', ['id' => $shoppingList->id]));
     }
+
+    public function test_profile_preferences_update_shows_product_pictures_toggle(): void
+    {
+        $user = User::factory()->create([
+            'show_product_pictures_in_shopping_list' => true,
+        ]);
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('profile.preferences.update'), [
+            'show_product_pictures_in_shopping_list' => '0',
+        ]);
+
+        $response->assertRedirect(route('profile.show'));
+
+        $user->refresh();
+
+        $this->assertFalse($user->show_product_pictures_in_shopping_list);
+    }
 }

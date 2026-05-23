@@ -22,7 +22,10 @@ Route::view('/users', 'users')->middleware('auth')->name('users.index');
 Route::view('/families', 'families')->middleware('auth')->name('families.index');
 Route::view('/shopping-lists', 'shopping-lists')->middleware('auth')->name('shopping-lists.index');
 Route::get('/shopping-lists/{id}', function ($id) {
-    return view('shopping-list-view', ['listId' => $id]);
+    return view('shopping-list-view', [
+        'listId' => $id,
+        'showProductPictures' => (bool) auth()->user()?->show_product_pictures_in_shopping_list,
+    ]);
 })->middleware('auth')->name('shopping-list.view');
 Route::view('/access-control', 'access-control')->middleware('auth')->name('access-control.index');
 Route::get('/profile', function () {
@@ -54,6 +57,7 @@ Route::post('/profile/preferences', function (Request $request) {
     $validated = $request->validate([
         'default_shopping_list_id' => ['nullable', 'integer'],
         'load_default_shopping_list_on_login' => ['nullable', 'boolean'],
+        'show_product_pictures_in_shopping_list' => ['nullable', 'boolean'],
     ]);
 
     $selectedDefaultId = $validated['default_shopping_list_id'] ?? null;
@@ -71,6 +75,7 @@ Route::post('/profile/preferences', function (Request $request) {
     $user->forceFill([
         'default_shopping_list_id' => $selectedDefaultId,
         'load_default_shopping_list_on_login' => $request->boolean('load_default_shopping_list_on_login'),
+        'show_product_pictures_in_shopping_list' => $request->boolean('show_product_pictures_in_shopping_list'),
     ])->save();
 
     $resolver->resolveDefaultShoppingList($user);

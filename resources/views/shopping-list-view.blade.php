@@ -8,6 +8,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
-    <div id="app" data-page="shopping-list-view" data-list-id="{{ $listId }}"></div>
+    <div
+        id="app"
+        data-page="shopping-list-view"
+        data-list-id="{{ $listId }}"
+        data-show-product-pictures="{{ $showProductPictures ? '1' : '0' }}"
+    ></div>
 </body>
 </html>

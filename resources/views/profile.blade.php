@@ -103,6 +103,16 @@
                     On login load default shopping list
                 </label>
 
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                        type="checkbox"
+                        name="show_product_pictures_in_shopping_list"
+                        value="1"
+                        @checked(old('show_product_pictures_in_shopping_list', $user->show_product_pictures_in_shopping_list ?? true))
+                    >
+                    Show product pictures in shopping list
+                </label>
+
                 <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
                     Save Preferences
                 </button>

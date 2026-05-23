@@ -28,6 +28,7 @@ class User extends Authenticatable
         'google_avatar',
         'default_shopping_list_id',
         'load_default_shopping_list_on_login',
+        'show_product_pictures_in_shopping_list',
     ];
 
     /**
@@ -51,6 +52,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'load_default_shopping_list_on_login' => 'boolean',
+            'show_product_pictures_in_shopping_list' => 'boolean',
         ];
     }
 

@@ -16,7 +16,10 @@ if (appElement) {
 	} else if (page === 'shopping-lists') {
 		createApp(ShoppingListManagementApp).mount(appElement);
 	} else if (page === 'shopping-list-view') {
-		createApp(ShoppingListViewApp, { listId: appElement.dataset.listId }).mount(appElement);
+		createApp(ShoppingListViewApp, {
+			listId: appElement.dataset.listId,
+			showProductPictures: appElement.dataset.showProductPictures === '1',
+		}).mount(appElement);
 	} else if (page === 'access-control') {
 		createApp(AccessControlApp).mount(appElement);
 	} else {
