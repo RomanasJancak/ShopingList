@@ -11,6 +11,11 @@ const loading = ref(true);
 const error = ref('');
 const removing = ref(new Set());
 const menuOpen = ref(false);
+const products = ref([]);
+const searchQuery = ref('');
+const showTypeahead = ref(false);
+const addingProductId = ref(null);
+const quantityUpdatesInProgress = ref(new Set());
 
 const activeItems = computed(() => {
     if (!list.value?.items) {
@@ -39,6 +44,15 @@ const loadList = async () => {
         error.value = e.response?.data?.message || 'Failed to load shopping list.';
     } finally {
         loading.value = false;
+    }
+};
+
+const loadProducts = async () => {
+    try {
+        const response = await window.axios.get('/api/products');
+        products.value = response.data;
+    } catch {
+        error.value = 'Failed to load products for search.';
     }
 };
 
@@ -74,6 +88,117 @@ const updateItemSkipState = async (itemId, isSkipped) => {
     });
 
     setItemSkipStateLocally(itemId, isSkipped);
+};
+
+const quantityDraft = (item) => {
+    const qty = Number(item.quantity);
+    if (Number.isNaN(qty) || qty <= 0) {
+        return '1';
+    }
+
+    return qty % 1 === 0 ? qty.toFixed(0) : qty.toString();
+};
+
+const updateItemQuantity = async (itemId, rawValue) => {
+    const parsed = Number.parseFloat(String(rawValue).replace(',', '.'));
+    const nextQuantity = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    const item = list.value?.items?.find((candidate) => candidate.id === itemId);
+
+    if (!item) {
+        return;
+    }
+
+    if (Number(item.quantity) === nextQuantity) {
+        return;
+    }
+
+    const nextSet = new Set(quantityUpdatesInProgress.value);
+    nextSet.add(itemId);
+    quantityUpdatesInProgress.value = nextSet;
+
+    error.value = '';
+
+    try {
+        const response = await window.axios.put(`/api/shopping-lists/${props.listId}/items/${itemId}`, {
+            product_id: item.product_id,
+            quantity: nextQuantity,
+            notes: item.notes,
+            is_completed: Boolean(item.is_completed),
+            is_skipped: Boolean(item.is_skipped),
+        });
+
+        if (list.value?.items) {
+            list.value.items = list.value.items.map((candidate) => {
+                if (candidate.id !== itemId) {
+                    return candidate;
+                }
+
+                return response.data;
+            });
+        }
+    } catch (e) {
+        error.value = e.response?.data?.message || 'Failed to update quantity.';
+    } finally {
+        const doneSet = new Set(quantityUpdatesInProgress.value);
+        doneSet.delete(itemId);
+        quantityUpdatesInProgress.value = doneSet;
+    }
+};
+
+const filteredTypeaheadProducts = computed(() => {
+    const query = searchQuery.value.trim().toLowerCase();
+    if (query.length === 0) {
+        return [];
+    }
+
+    return products.value
+        .filter((product) => product.name.toLowerCase().includes(query))
+        .slice(0, 8);
+});
+
+const addProductFromTypeahead = async (product) => {
+    if (!list.value || addingProductId.value !== null) {
+        return;
+    }
+
+    addingProductId.value = product.id;
+    error.value = '';
+
+    try {
+        const existing = list.value.items?.find((item) => item.product_id === product.id) ?? null;
+
+        if (existing) {
+            const updatedQuantity = Math.max(Number(existing.quantity) || 0, 1);
+            const response = await window.axios.put(`/api/shopping-lists/${props.listId}/items/${existing.id}`, {
+                product_id: existing.product_id,
+                quantity: updatedQuantity,
+                notes: existing.notes,
+                is_completed: Boolean(existing.is_completed),
+                is_skipped: false,
+            });
+
+            const updatedItem = response.data;
+            const withoutCurrent = list.value.items.filter((item) => item.id !== existing.id);
+            list.value.items = [updatedItem, ...withoutCurrent];
+        } else {
+            const response = await window.axios.post(`/api/shopping-lists/${props.listId}/items`, {
+                product_id: product.id,
+                quantity: 1,
+                notes: null,
+                is_completed: false,
+                is_skipped: false,
+            });
+
+            list.value.items = [response.data, ...(list.value.items ?? [])];
+        }
+
+        searchQuery.value = '';
+        showTypeahead.value = false;
+    } catch (e) {
+        error.value = e.response?.data?.message || 'Failed to add product to list.';
+    } finally {
+        addingProductId.value = null;
+    }
 };
 
 const completeItem = async (itemId) => {
@@ -173,7 +298,9 @@ const formatQuantity = (item) => {
     return `${formatted} ${item.product?.quantity_type ?? ''}`.trim();
 };
 
-onMounted(loadList);
+onMounted(async () => {
+    await Promise.all([loadList(), loadProducts()]);
+});
 </script>
 
 <template>
@@ -181,9 +308,53 @@ onMounted(loadList);
         <!-- Header bar -->
         <div class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
             <div class="min-w-0 pr-3">
-                <h1 class="text-lg font-bold text-gray-900 truncate leading-tight">
-                    {{ list?.name ?? '…' }}
-                </h1>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-lg font-bold text-gray-900 truncate leading-tight">
+                        {{ list?.name ?? '…' }}
+                    </h1>
+
+                    <div class="relative">
+                        <button
+                            type="button"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                            aria-label="Search products"
+                            title="Search products"
+                            @click="showTypeahead = !showTypeahead"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m1.35-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </button>
+
+                        <div v-if="showTypeahead" class="absolute left-0 top-10 z-40 w-72 rounded-lg border border-gray-200 bg-white shadow-lg">
+                            <div class="p-2 border-b border-gray-100">
+                                <input
+                                    v-model="searchQuery"
+                                    type="text"
+                                    class="w-full rounded border border-gray-300 px-2.5 py-1.5 text-sm"
+                                    placeholder="Search product by name"
+                                >
+                            </div>
+
+                            <div v-if="filteredTypeaheadProducts.length" class="max-h-56 overflow-auto py-1">
+                                <button
+                                    v-for="product in filteredTypeaheadProducts"
+                                    :key="product.id"
+                                    type="button"
+                                    class="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                    :disabled="addingProductId === product.id"
+                                    @click="addProductFromTypeahead(product)"
+                                >
+                                    <span class="truncate">{{ product.name }}</span>
+                                    <span class="ml-2 text-xs text-gray-500">+1</span>
+                                </button>
+                            </div>
+
+                            <p v-else class="px-3 py-2 text-xs text-gray-500">No matching products.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <p v-if="list?.description" class="text-xs text-gray-500 truncate">{{ list.description }}</p>
             </div>
 
@@ -259,7 +430,18 @@ onMounted(loadList);
                     <div class="px-4 pt-3 pb-4 flex flex-col gap-3">
                         <div>
                             <h2 class="text-xl font-bold text-gray-900 leading-tight">{{ item.product?.name }}</h2>
-                            <p class="text-base text-gray-500 font-medium mt-0.5">{{ formatQuantity(item) }}</p>
+                            <div class="mt-1 flex items-center gap-2">
+                                <input
+                                    :value="quantityDraft(item)"
+                                    type="number"
+                                    min="1"
+                                    step="0.01"
+                                    class="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
+                                    :disabled="quantityUpdatesInProgress.has(item.id)"
+                                    @change="updateItemQuantity(item.id, $event.target.value)"
+                                >
+                                <span class="text-sm text-gray-500">{{ item.product?.quantity_type }}</span>
+                            </div>
                             <p v-if="item.notes" class="text-sm text-gray-400 mt-1 italic">{{ item.notes }}</p>
                         </div>
 
@@ -296,7 +478,18 @@ onMounted(loadList);
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center justify-between gap-2">
                                 <h2 class="text-sm font-semibold text-gray-900 truncate leading-tight">{{ item.product?.name }}</h2>
-                                <span class="shrink-0 text-[11px] font-medium text-gray-600">{{ formatQuantity(item) }}</span>
+                                <div class="shrink-0 flex items-center gap-1">
+                                    <input
+                                        :value="quantityDraft(item)"
+                                        type="number"
+                                        min="1"
+                                        step="0.01"
+                                        class="w-16 rounded border border-gray-300 px-1.5 py-0.5 text-[11px]"
+                                        :disabled="quantityUpdatesInProgress.has(item.id)"
+                                        @change="updateItemQuantity(item.id, $event.target.value)"
+                                    >
+                                    <span class="text-[11px] font-medium text-gray-600">{{ item.product?.quantity_type }}</span>
+                                </div>
                             </div>
                             <p v-if="item.notes" class="mt-0.5 text-xs text-gray-500 italic line-clamp-2">{{ item.notes }}</p>
                         </div>
@@ -353,7 +546,18 @@ onMounted(loadList);
                     >
                         <div class="min-w-0 flex items-center gap-2">
                             <p class="truncate text-xs font-medium text-amber-900">{{ item.product?.name }}</p>
-                            <span class="shrink-0 text-[11px] text-amber-700">{{ formatQuantity(item) }}</span>
+                            <div class="shrink-0 flex items-center gap-1">
+                                <input
+                                    :value="quantityDraft(item)"
+                                    type="number"
+                                    min="1"
+                                    step="0.01"
+                                    class="w-14 rounded border border-amber-300 bg-white px-1 py-0.5 text-[11px] text-amber-900"
+                                    :disabled="quantityUpdatesInProgress.has(item.id)"
+                                    @change="updateItemQuantity(item.id, $event.target.value)"
+                                >
+                                <span class="text-[11px] text-amber-700">{{ item.product?.quantity_type }}</span>
+                            </div>
                         </div>
 
                         <button
